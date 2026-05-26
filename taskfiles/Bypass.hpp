@@ -4,13 +4,15 @@
 #include "../SDK.hpp"
 #include <string>
 
-void* hProcessEvent(UObject* pObj, UFunction* pFunc, void* pArgs) {
+// Target: libUE4.so
+// Hook Point (ProcessEvent): 0x8402184
+
+bool hProcessEvent(UObject* pObj, UFunction* pFunc, void* pArgs) {
     if (pFunc) {
         std::string fnName = pFunc->GetFullName();
         if (fnName.find("RPC_ClientCoronaLab") != std::string::npos) {
-            return nullptr;
+            return false;
         }
     }
-    // Note: UObject::ProcessEvent index is 76 in this SDK.
-    return nullptr;
+    return true;
 }
