@@ -10,7 +10,6 @@ namespace NoRecoilModule {
         auto WeaponManagerComponent = localPlayer->WeaponManagerComponent;
         if (WeaponManagerComponent) {
             auto propSlot = WeaponManagerComponent->GetCurrentUsingPropSlot();
-            // SWPS_MainShootWeapon1 = 1, SWPS_MainShootWeapon2 = 2, SWPS_SubShootWeapon = 3
             if ((uint8_t)propSlot >= 1 && (uint8_t)propSlot <= 3) {
                 auto CurrentWeaponReplicated = (ASTExtraShootWeapon*)WeaponManagerComponent->CurrentWeaponReplicated;
                 if (CurrentWeaponReplicated) {

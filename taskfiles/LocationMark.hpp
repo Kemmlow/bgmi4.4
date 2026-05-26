@@ -4,11 +4,18 @@
 #include "../SDK.hpp"
 
 namespace LocationMarkModule {
+    inline bool bAimbotEnabled = false;
+    inline bool bWasMarking = false;
+
     void DetectLocationMark(ASTExtraBaseCharacter* localPlayer) {
         if (localPlayer) {
-            if (localPlayer->bIsDrawLocation) {
-                //Detected
+            bool bIsMarking = localPlayer->bIsDrawLocation;
+
+            if (bIsMarking && !bWasMarking) {
+                bAimbotEnabled = !bAimbotEnabled;
             }
+
+            bWasMarking = bIsMarking;
         }
     }
 }
