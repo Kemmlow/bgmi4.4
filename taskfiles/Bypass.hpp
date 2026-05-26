@@ -4,8 +4,7 @@
 #include "../SDK.hpp"
 #include <string>
 
-// Target: libUE4.so
-// Hook Point (ProcessEvent): 0x8402184
+// Target: libUE4.so | Hook Point: 0x8402184
 
 bool hProcessEvent(UObject* pObj, UFunction* pFunc, void* pArgs) {
     if (pFunc) {
@@ -14,6 +13,10 @@ bool hProcessEvent(UObject* pObj, UFunction* pFunc, void* pArgs) {
         if (fnName.find("RPC_ClientCoronaLab") != std::string::npos ||
             fnName.find("RPC_Server_SynShootMissData") != std::string::npos ||
             fnName.find("RPC_Server_ShootVertifyFailAlarm") != std::string::npos ||
+            fnName.find("RPC_Server_SendLog") != std::string::npos ||
+            fnName.find("RPC_ServerGlueHiaPark") != std::string::npos ||
+            fnName.find("RPC_ServerCapbo") != std::string::npos ||
+            fnName.find("OnRecoilCurveCheckFailed") != std::string::npos ||
             fnName.find("Do_VerifyShoot") != std::string::npos) {
             return false;
         }
