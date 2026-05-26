@@ -3,10 +3,8 @@
 
 #include "../SDK.hpp"
 
-namespace NoShakeModule {
-    void ApplyNoShake(ASTExtraBaseCharacter* localPlayer) {
-        if (!localPlayer) return;
-
+static void ApplyNoShake(ASTExtraBaseCharacter* localPlayer) {
+    if (localPlayer) {
         auto WeaponManagerComponent = localPlayer->WeaponManagerComponent;
         if (WeaponManagerComponent) {
             auto propSlot = WeaponManagerComponent->GetCurrentUsingPropSlot();

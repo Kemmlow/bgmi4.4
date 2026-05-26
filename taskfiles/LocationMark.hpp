@@ -4,7 +4,7 @@
 #include "../SDK.hpp"
 #include <chrono>
 
-bool DetectLocationMark(ASTExtraBaseCharacter* localPlayer) {
+static bool DetectLocationMark(ASTExtraBaseCharacter* localPlayer) {
     static bool bAimbotEnabled = false;
     static bool bWasMarking = false;
     static std::chrono::steady_clock::time_point lastToggleTime = std::chrono::steady_clock::now();

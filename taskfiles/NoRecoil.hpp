@@ -3,10 +3,8 @@
 
 #include "../SDK.hpp"
 
-namespace NoRecoilModule {
-    void ApplyNoRecoil(ASTExtraBaseCharacter* localPlayer) {
-        if (!localPlayer) return;
-
+static void ApplyNoRecoil(ASTExtraBaseCharacter* localPlayer) {
+    if (localPlayer) {
         auto WeaponManagerComponent = localPlayer->WeaponManagerComponent;
         if (WeaponManagerComponent) {
             auto propSlot = WeaponManagerComponent->GetCurrentUsingPropSlot();

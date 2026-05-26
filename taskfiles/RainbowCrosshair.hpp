@@ -4,10 +4,8 @@
 #include "../SDK.hpp"
 #include <cmath>
 
-namespace RainbowCrosshairModule {
-    void ApplyRainbowCrosshair(ASTExtraPlayerController* localController) {
-        if (!localController) return;
-
+void ApplyRainbowCrosshair(ASTExtraPlayerController* localController) {
+    if (localController) {
         static float cnt = 0.0f;
         const float RainbowSpeed = 8.0f;
         const int RainbowColorCount = 7;

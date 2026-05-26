@@ -3,7 +3,7 @@
 
 #include "../SDK.hpp"
 
-bool DisableBulletChecks(ASTExtraBaseCharacter* localPlayer) {
+static bool DisableBulletChecks(ASTExtraBaseCharacter* localPlayer) {
     if (localPlayer && localPlayer->WeaponManagerComponent) {
         auto WeaponManagerComponent = localPlayer->WeaponManagerComponent;
         auto CurrentWeaponReplicated = (ASTExtraShootWeapon*)WeaponManagerComponent->CurrentWeaponReplicated;

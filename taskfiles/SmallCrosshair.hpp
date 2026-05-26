@@ -3,10 +3,8 @@
 
 #include "../SDK.hpp"
 
-namespace SmallCrosshairModule {
-    void ApplySmallCrosshair(ASTExtraBaseCharacter* localPlayer) {
-        if (!localPlayer) return;
-
+static void ApplySmallCrosshair(ASTExtraBaseCharacter* localPlayer) {
+    if (localPlayer) {
         auto WeaponManagerComponent = localPlayer->WeaponManagerComponent;
         if (WeaponManagerComponent) {
             auto propSlot = WeaponManagerComponent->GetCurrentUsingPropSlot();
