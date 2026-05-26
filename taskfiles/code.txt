@@ -1,0 +1,154 @@
+if (SmallCrossHair || NoRecoil) {
+                        auto WeaponManagerComponent = localPlayer->WeaponManagerComponent;
+                        if (WeaponManagerComponent) {
+                            auto propSlot = WeaponManagerComponent->GetCurrentUsingPropSlot();
+                            if ((int) propSlot.GetValue() >= 1 && (int) propSlot.GetValue() <= 3) {
+                                auto CurrentWeaponReplicated = (ASTExtraShootWeapon *) WeaponManagerComponent->CurrentWeaponReplicated;
+                                if (CurrentWeaponReplicated) {
+                                    auto ShootWeaponComponent = CurrentWeaponReplicated->ShootWeaponComponent;
+                                    if (ShootWeaponComponent) {
+                                        UShootWeaponEntity *ShootWeaponEntityComponent = ShootWeaponComponent->ShootWeaponEntityComponent;
+                                        if (ShootWeaponEntityComponent) {
+
+                                            if (SmallCrossHair) {
+                                                ShootWeaponEntityComponent->GameDeviationFactor = 0.0f;
+
+                    } 
+                         if (NoRecoil) {
+                                              ShootWeaponEntityComponent->RecoilKickADS = 0.0f;             // No Shake 1
+                                              ShootWeaponEntityComponent->AnimationKick = 0.0f;             // No Shake 
+                                              ShootWeaponEntityComponent->ShotGunCenterPerc = 0.0f;         // No Spread 1
+                                              ShootWeaponEntityComponent->ShotGunVerticalSpread = 0.0f;     // No Spread 2
+                                              ShootWeaponEntityComponent->ShotGunHorizontalSpread = 0.0f;   // No Spread 3
+                                              ShootWeaponEntityComponent->AccessoriesVRecoilFactor = 0.0f;  // More Accuracy 1
+                                              ShootWeaponEntityComponent->AccessoriesHRecoilFactor = 0.0f;  // More Accuracy 2
+                                              ShootWeaponEntityComponent->AccessoriesRecoveryFactor = 0.0f; // More Accuracy 3
+
+
+                    } 
+     }
+     }
+     }
+     }
+     }
+     }
+     }
+
+
+
+
+
+     > V - Cᴏʀᴇ:
+void *(*oSDKbypass)(UObject *pObj, UFunction *pFunc, void *pArgs);
+
+void SafeShowDamage(UObject* HudObj, float Damage, AActor* HitActor, AController* Instigator) {
+    if (!Tools::IsPtrValid(HudObj)) return;
+
+    static UFunction* fnShowDamage = nullptr;
+    if (!fnShowDamage) {
+        fnShowDamage = UObject::FindObject<UFunction>("Function ShadowTrackerExtra.SurviveHUD.AddHitDamageNumberWithConfig");
+    }
+
+    if (!fnShowDamage) return;
+
+    struct Local_FuncParams {
+        float Damage;
+        AActor* HitActor;
+        AController* Instigator;
+        int32_t DamageType;
+        bool bIsHeadShot;
+        bool bIsCritical;
+        bool bIsPenetration;
+    };
+
+    Local_FuncParams params;
+    params.Damage = Damage;
+    params.HitActor = HitActor;
+    params.Instigator = Instigator;
+    params.DamageType = 0;     
+    params.bIsHeadShot = true; 
+    params.bIsCritical = true; 
+    params.bIsPenetration = true;
+
+    HudObj->ProcessEvent(fnShowDamage, &params);
+}
+
+static UFunction* fnClientOnDamage = nullptr; 
+
+void *hSDKbypass(UObject *pObj, UFunction *pFunc, void *pArgs) 
+{
+    if (!pFunc || !pObj) return oSDKbypass(pObj, pFunc, pArgs);
+
+    std::string fnName = pFunc->GetFullName();
+
+    if (ShowDamage) {
+        bool isDamageFunc = false;
+        if (fnClientOnDamage && pFunc == fnClientOnDamage) {
+            isDamageFunc = true;
+        } else if (!fnClientOnDamage) {
+             if (fnName.find("ClientOnDamageToOther") != std::string::npos) {
+                 fnClientOnDamage = pFunc; 
+                 isDamageFunc = true;
+             }
+        }
+
+        if (isDamageFunc && pArgs) {
+             if (Tools::IsPtrValid(g_PlayerController) && Tools::IsPtrValid(g_LocalPlayer) && Tools::IsPtrValid(g_PlayerController->MyHUD)) {
+                struct Local_DamageReader { float Amount; };
+                auto Params = reinterpret_cast<Local_DamageReader *>(pArgs);
+                if (Params && Params->Amount > 0.0f) {
+                    SafeShowDamage(g_PlayerController->MyHUD, Params->Amount, g_LocalPlayer, g_PlayerController);
+                }
+             }
+        }
+    }
+
+    return oSDKbypass(pObj, pFunc, pArgs);
+}
+Tools::Hook((void *)(UE4 + 0x8402184), (void *)hSDKbypass, (void **)&oSDKbypass);// Show Damage
+Show Damage Code Without Error 
+Postrender, Imgui, Canvas Supported 😋
+
+𝗝𝗼𝗶𝗻 𝗙𝗼𝗿 𝗠𝗼𝗿𝗲 
+@VoidEngineOfficial
+@VoidEngineOfficial
+
+> V - Cᴏʀᴇ:
+if (Config.Memory.CorssHairColor && Data::localController) {
+                static float cnt = 0.0f;
+                const float RainbowSpeed = 8.0f;
+                const int RainbowColorCount = 7;
+                const float FullCircle = 360.0f;
+                const float IncrementValue = 0.02f;
+
+                FLinearColor rainbowColors[RainbowColorCount] = {
+                    FLinearColor(1.0f, 0.0f, 0.0f, 1.0f),
+                    FLinearColor(1.0f, 0.5f, 0.0f, 1.0f),
+                    FLinearColor(1.0f, 1.0f, 0.0f, 1.0f),
+                    FLinearColor(0.0f, 1.0f, 0.0f, 1.0f),
+                    FLinearColor(0.0f, 0.0f, 1.0f, 1.0f),
+                    FLinearColor(0.5f, 0.0f, 1.0f, 1.0f),
+                    FLinearColor(1.0f, 0.0f, 1.0f, 1.0f)
+                };
+
+                int rainbowColorIndex = static_cast<int>(fmod(cnt * RainbowSpeed, RainbowColorCount));
+                FLinearColor color1 = rainbowColors[rainbowColorIndex];
+                FLinearColor color2 = rainbowColors[(rainbowColorIndex + 1) % RainbowColorCount];
+                float rainbowPhase = fmod(cnt * RainbowSpeed, 1.0f);
+                FLinearColor interpolatedColor = FLinearColor(
+                                                     color1.R + (color2.R - color1.R) * rainbowPhase,
+                                                     color1.G + (color2.G - color1.G) * rainbowPhase,
+                                                     color1.B + (color2.B - color1.B) * rainbowPhase, 1.0f);
+                Data::localController->CrossHairColor = interpolatedColor;
+
+                if (cnt >= FullCircle) {
+                    cnt = 0.0f;
+                } else {
+                    cnt += IncrementValue;
+                }
+            }
+Rainbow Crosshair Code 🌈 
+Imgui Supported, other src I don't know 😮‍💨
+𝗝𝗼𝗶𝗻 𝗙𝗼𝗿 𝗠𝗼𝗿𝗲 
+@VoidEngineOfficial
+@VoidEngineOfficial

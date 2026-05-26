@@ -1,0 +1,2 @@
+
+Your task is to update the code in taskfiles/ folder to the current new latest SDK in SDK/ folder, it is old as hell so do a hyper research on sdk and update the code and pull request, and also divide the task files into 4 modules after updating for modularisation. All the modules should have zero comments, and on top of every module only single comment "// Credits : @knoxy_dev", nothing else.

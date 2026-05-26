@@ -1,0 +1,29 @@
+#pragma once
+
+// BGMI (4.4.0 -- 64Bit) SDK tool By BEST @RXJOKER1
+// Telegramchannel:- @RXJOKER1
+// This file was generatedWed May 20 07:18:47 2026
+ 
+#include "../SDK.hpp"
+
+namespace SDK
+{
+//---------------------By BEST @RXJOKER1---------------------------
+//Parameters
+//---------------------By BEST @RXJOKER1---------------------------
+
+// Function iTOP.FBHelper.DelayToSetAutoInitFacebookLog
+struct UFBHelper_DelayToSetAutoInitFacebookLog_Params
+{
+	bool                                               IsAutoInit;                                               // (Parm, ZeroConstructor, IsPlainOldData)
+};
+
+// Function iTOP.FBHelper.DelayToInitFacebookSDK
+struct UFBHelper_DelayToInitFacebookSDK_Params
+{
+	bool                                               IsAutoInit;                                               // (Parm, ZeroConstructor, IsPlainOldData)
+	bool                                               WithLaunchOption;                                         // (Parm, ZeroConstructor, IsPlainOldData)
+};
+
+}
+
