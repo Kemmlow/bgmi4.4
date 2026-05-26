@@ -14,7 +14,7 @@ namespace RainbowCrosshairModule {
         const float FullCircle = 360.0f;
         const float IncrementValue = 0.02f;
 
-        FLinearColor rainbowColors[RainbowColorCount] = {
+        static const FLinearColor rainbowColors[RainbowColorCount] = {
             FLinearColor(1.0f, 0.0f, 0.0f, 1.0f),
             FLinearColor(1.0f, 0.5f, 0.0f, 1.0f),
             FLinearColor(1.0f, 1.0f, 0.0f, 1.0f),
@@ -25,8 +25,8 @@ namespace RainbowCrosshairModule {
         };
 
         int rainbowColorIndex = static_cast<int>(std::fmod(cnt * RainbowSpeed, (float)RainbowColorCount));
-        FLinearColor color1 = rainbowColors[rainbowColorIndex];
-        FLinearColor color2 = rainbowColors[(rainbowColorIndex + 1) % RainbowColorCount];
+        const FLinearColor& color1 = rainbowColors[rainbowColorIndex];
+        const FLinearColor& color2 = rainbowColors[(rainbowColorIndex + 1) % RainbowColorCount];
         float rainbowPhase = std::fmod(cnt * RainbowSpeed, 1.0f);
 
         FLinearColor interpolatedColor;
