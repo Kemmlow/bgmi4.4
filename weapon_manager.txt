@@ -1,0 +1,151 @@
+16248:class UWeaponManagerComponent : public UActorComponent
+16249-{
+16250-public:
+16251-	unsigned char                                      UnknownData00[0x48];                                      // 0x0178(0x0048) MISSED OFFSET
+16252-	TMap<struct FName, struct FName>                   LogicSocketToWeaponAttachSocketMap;                       // 0x01C0(0x0050) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance)
+16253-	struct FName                                       LeftLogicSocketName;                                      // 0x0210(0x0008) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance, IsPlainOldData)
+16254-	struct FName                                       RightLogicSocketName;                                     // 0x0218(0x0008) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance, IsPlainOldData)
+16255-	TMap<struct FName, struct FName>                   LogicSocketToWeaponAttachSocketMapNoBag;                  // 0x0220(0x0050) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance)
+16256-	TMap<struct FName, TEnumAsByte<enum ESurviveWeaponPropSlot>> LogicSocketToPropSlotMap;                                 // 0x0270(0x0050) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance)
+16257-	TMap<TEnumAsByte<enum ESurviveWeaponPropSlot>, struct FWeaponSets> DisableWeaponOnSlotMap;                                   // 0x02C0(0x0050) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance)
+16258-	float                                              CheckHasAnyGrenadeTimerSetting;                           // 0x0310(0x0004) (Edit, BlueprintVisible, BlueprintReadOnly, ZeroConstructor, DisableEditOnInstance, IsPlainOldData)
+16259-	bool                                               ShowMainWeaponModelOnBack;                                // 0x0314(0x0001) (Edit, BlueprintVisible, Net, ZeroConstructor, DisableEditOnInstance, IsPlainOldData)
+16260-	bool                                               HideCurrentWeapon;                                        // 0x0315(0x0001) (Edit, BlueprintVisible, Net, ZeroConstructor, DisableEditOnInstance, IsPlainOldData)
+16261-	unsigned char                                      UnknownData01[0x2];                                       // 0x0316(0x0002) MISSED OFFSET
+16262-	struct FName                                       CurUseWeaponLogicSocket;                                  // 0x0318(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16263-	TEnumAsByte<enum ESurviveWeaponPropSlot>           CurUseWeaponLogicSocketRep;                               // 0x0320(0x0001) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16264-	unsigned char                                      UnknownData02[0x7];                                       // 0x0321(0x0007) MISSED OFFSET
+16265-	struct FName                                       CurUseShieldWeaponLogicSocket;                            // 0x0328(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16266-	struct FName                                       NextUseWeaponLogicSocket;                                 // 0x0330(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16267-	bool                                               bIsSwitching;                                             // 0x0338(0x0001) (BlueprintVisible, BlueprintReadOnly, ZeroConstructor, IsPlainOldData)
+16268-	bool                                               bIsSwitchingFromSkill;                                    // 0x0339(0x0001) (BlueprintVisible, BlueprintReadOnly, ZeroConstructor, IsPlainOldData)
+16269-	unsigned char                                      UnknownData03[0x6];                                       // 0x033A(0x0006) MISSED OFFSET
+16270-	struct FName                                       LastUseNoneGrenadeLogicSlot;                              // 0x0340(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16271-	struct FName                                       LastUseLogicSlot;                                         // 0x0348(0x0008) (BlueprintVisible, BlueprintReadOnly, ZeroConstructor, IsPlainOldData)
+16272-	bool                                               bUIHasBoundDelegate;                                      // 0x0350(0x0001) (BlueprintVisible, ZeroConstructor, IsPlainOldData)
+16273-	bool                                               bClientHasFinishedHandleSpawnWeapon;                      // 0x0351(0x0001) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16274-	bool                                               EnableResyncSpawnPolling;                                 // 0x0352(0x0001) (ZeroConstructor, Config, IsPlainOldData)
+16275-	unsigned char                                      UnknownData04[0x1];                                       // 0x0353(0x0001) MISSED OFFSET
+16276-	float                                              ResyncTimeBias;                                           // 0x0354(0x0004) (ZeroConstructor, Config, IsPlainOldData)
+16277-	float                                              MaxResyncTimeBias;                                        // 0x0358(0x0004) (ZeroConstructor, Config, IsPlainOldData)
+16278-	float                                              NextResyncTimestamp;                                      // 0x035C(0x0004) (ZeroConstructor, IsPlainOldData)
+16279-	unsigned char                                      UnknownData05[0x8];                                       // 0x0360(0x0008) MISSED OFFSET
+16280-	struct FScriptMulticastDelegate                    LocalBackpackCurerrentWeaponFinishDelegate;               // 0x0368(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16281-	struct FScriptMulticastDelegate                    ChangeCurrentUsingWeaponDelegate;                         // 0x0378(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16282-	struct FScriptMulticastDelegate                    ChangeInventoryDataDelegate;                              // 0x0388(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16283-	struct FScriptMulticastDelegate                    LocalEquipWeaponFromBackpackFinishedDelegate;             // 0x0398(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16284-	struct FScriptMulticastDelegate                    SwapWeaponByPropSlotFinishedDelegate;                     // 0x03A8(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16285-	struct FScriptMulticastDelegate                    SimulatedWeaponChangedDelegate;                           // 0x03B8(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16286-	struct FScriptMulticastDelegate                    WeaponSystemAttachDataChangedDelegate;                    // 0x03C8(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16287-	unsigned char                                      UnknownData06[0x10];                                      // 0x03D8(0x0010) MISSED OFFSET
+16288-	struct FScriptMulticastDelegate                    NextUseWeaponChangedDelegate;                             // 0x03E8(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16289-	struct FScriptMulticastDelegate                    EquipVehicleShootWeaponDelegate;                          // 0x03F8(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16290-	TEnumAsByte<enum ESurviveWeaponPropSlot>           SwitchSlotAfterFinishCreatingWeapon;                      // 0x0408(0x0001) (ZeroConstructor, IsPlainOldData)
+16291-	bool                                               bSwitchSlotAfterCreatIgnoreState;                         // 0x0409(0x0001) (ZeroConstructor, IsPlainOldData)
+16292-	unsigned char                                      UnknownData07[0x6];                                       // 0x040A(0x0006) MISSED OFFSET
+16293-	struct FScriptMulticastDelegate                    ClientFinishedSpawnWeaponDelegate;                        // 0x0410(0x0010) (ZeroConstructor, InstancedReference, BlueprintAssignable)
+16294-	TMap<struct FName, class ASTExtraWeapon*>          InventoryData;                                            // 0x0420(0x0050) (ZeroConstructor)
+16295-	TArray<class ASTExtraWeapon*>                      BackpackPistolList;                                       // 0x0470(0x0010) (ZeroConstructor)
+16296-	unsigned char                                      UnknownData08[0x8];                                       // 0x0480(0x0008) MISSED OFFSET
+16297-	TArray<struct FWeaponCreateInstance>               TargetCreateArray;                                        // 0x0488(0x0010) (ZeroConstructor)
+16298-	TArray<struct FSpawnAndBackpackWeaponReplicatedData> WeaponCreatePool;                                         // 0x0498(0x0010) (ZeroConstructor)
+16299-	struct FWeaponSystemDataOnSimulateClient           WeaponSystemDataOnSimulateClientSlot1;                    // 0x04A8(0x0038) (BlueprintVisible, Net)
+16300-	struct FWeaponSystemDataOnSimulateClient           WeaponSystemDataOnSimulateClientSlot2;                    // 0x04E0(0x0038) (BlueprintVisible, Net)
+16301-	struct FWeaponSystemDataOnSimulateClient           WeaponSystemDataOnSimulateClientSubSlot;                  // 0x0518(0x0038) (BlueprintVisible, Net)
+16302-	struct FWeaponSystemDataOnSimulateClient           WeaponSystemDataOnSimulateClientMeleeSlot;                // 0x0550(0x0038) (BlueprintVisible, Net)
+16303-	struct FWeaponSystemDataOnSimulateClient           WeaponSystemDataOnSimulateClientHandPropSlot;             // 0x0588(0x0038) (BlueprintVisible, Net)
+16304-	unsigned char                                      UnknownData09[0x8];                                       // 0x05C0(0x0008) MISSED OFFSET
+16305-	class ASTExtraWeapon*                              CurrentWeaponReplicated;                                  // 0x05C8(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16306-	class ASTExtraWeapon*                              TemporaryWeaponReplicated;                                // 0x05D0(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16307-	class ASTExtraWeapon*                              CurrentWeaponSimulate;                                    // 0x05D8(0x0008) (BlueprintVisible, BlueprintReadOnly, ZeroConstructor, IsPlainOldData)
+16308-	class ASTExtraWeapon*                              CurrentShieldWeaponReplicated;                            // 0x05E0(0x0008) (BlueprintVisible, BlueprintReadOnly, Net, ZeroConstructor, IsPlainOldData)
+16309-	class ASTExtraWeapon*                              CurrentShieldWeaponSimulate;                              // 0x05E8(0x0008) (BlueprintVisible, BlueprintReadOnly, ZeroConstructor, IsPlainOldData)
+16310-	unsigned char                                      UnknownData10[0x38];                                      // 0x05F0(0x0038) MISSED OFFSET
+16311-	class ASTExtraWeapon*                              OldGrenadeWeaponNeedDestroy;                              // 0x0628(0x0008) (ZeroConstructor, IsPlainOldData)
+16312-	unsigned char                                      UnknownData11[0x40];                                      // 0x0630(0x0040) MISSED OFFSET
+16313-	class UMaterialInterface*                          FeatureMaterial;                                          // 0x0670(0x0008) (BlueprintVisible, ZeroConstructor, IsPlainOldData)
+16314-
+16315-	static UClass* StaticClass()
+16316-	{
+16317-        static UClass *pStaticClass = 0;
+16318-        if (!pStaticClass)
+16319-            pStaticClass = UObject::FindClass("Class ShadowTrackerExtra.WeaponManagerComponent");
+16320-		return pStaticClass;
+16321-	}
+16322-
+16323-
+16324-	void WeaponSystemDataChangedDelegate__DelegateSignature(struct FWeaponSystemDataOnSimulateClient* TargetChangeSlot);
+16325-	void WeaponSystemAttachDataChangedDelegate__DelegateSignature();
+16326-	void UpdateOwnerClientCreateWeapon();
+16327-	void TickHideWeapon();
+16328-	void SwitchWeaponBySlot(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot, bool bUseAnimation);
+16329-	void SwitchWeaponByLogicSocket_IdleToBackpackFinished();
+16330-	void SwapWeaponByPropSlotFinishedDelegate__DelegateSignature(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot1, TEnumAsByte<enum ESurviveWeaponPropSlot> Slot2);
+16331-	class ASTExtraWeapon* SpawnAndBackpackWeaponOnServer(class UClass* Template, const struct FItemDefineID& ID, const struct FName& LogicSocket, bool bAutoUse, bool bNeedSwitch, bool bResetBulletNum);
+16332-	void SimulatedWeaponChangedDelegate__DelegateSignature();
+16333-	void SetSwitchSlotAfterFinishCreatingWeapon(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot, bool ignoreState);
+16334-	void SetNextUseWeaponSlot(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16335-	void SetCurrentTemporaryWeapon(class ASTExtraWeapon* InVehicleWeapon, bool IsServerCall);
+16336-	void RemoveWeaponInInventory(class ASTExtraWeapon* Weapon);
+16337-	void RemoveInventoryData(const struct FName& SocketName);
+16338-	void RefreshWeaponVisibleWithCameraMode(TEnumAsByte<enum EPlayerCameraMode> CameraMode);
+16339-	void RefreshWeaponLogicSocketInSpawnDataCacheByPropSlotOnServer(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16340-	void RefreshWeapnAttachToBack(class ASTExtraWeapon* Weapon, const struct FName& LogicSocket);
+16341-	void PushAutoTriggerWeaponEventTaskWhenEquipWeapon(const struct FAutoTriggerWeaponEventParam& Param);
+16342-	int OverrideShootWeaponInitClip__DelegateSignature(int nWeaponSlot, int nSpecificID);
+16343-	void OnWeaponAdded(class ASTExtraWeapon* Weapon);
+16344-	void OnRepReplayData();
+16345-	void OnRep_WeaponSystemDataOnSimulateMeleeSlot();
+16346-	void OnRep_WeaponSystemDataOnSimulateHandPropSlot();
+16347-	void OnRep_WeaponSystemDataOnSimulateClientSubSlot();
+16348-	void OnRep_WeaponSystemDataOnSimulateClientSlot2();
+16349-	void OnRep_WeaponSystemDataOnSimulateClientSlot1();
+16350-	void OnRep_TemporaryWeaponReplicated(class ASTExtraWeapon* LastVehicleWeapon);
+16351-	void OnRep_NextUseWeaponLogicSocket();
+16352-	void OnRep_LastUseNoneGrenadeLogicSlotOnSimulateClient();
+16353-	void OnRep_CurUseWeaponLogicSocketRep();
+16354-	void OnRep_CurrentWeaponReplicated();
+16355-	void OnRep_CurrentWeaponLogicSocket();
+16356-	void OnRep_CurrentShieldWeaponReplicated();
+16357-	void OnReconnectOnServer();
+16358-	void OnReconnectOnClient();
+16359-	void NextUseWeaponChangedDelegate__DelegateSignature();
+16360-	void LogInventoryDataInfo();
+16361-	bool LocalSwapWeaponByPropSlot(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot1, TEnumAsByte<enum ESurviveWeaponPropSlot> Slot2, bool bForce);
+16362-	void LocalHandleWeaponSystemDataOnSimulate(struct FWeaponSystemDataOnSimulateClient* Data);
+16363-	void LocalForceFinishSwitchWeapon();
+16364-	void LocalEquipWeaponFromBackpackFinishedDelegate__DelegateSignature();
+16365-	void LocalEquipWeaponFromBackpackFinishedCallback();
+16366-	bool LocalDestroyWeapon(const struct FName& SocketName, bool bEnableBroadcast);
+16367-	void LocalBackpackCurerrentWeaponFinishedCallback();
+16368-	void LocalBackpackCurerrentWeaponFinishDelegate__DelegateSignature();
+16369-	bool IsWeaponSpawnDataCacheIsEmpty();
+16370-	bool IsValidSlotForWeapon(const struct FItemDefineID& DefineID, TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16371-	bool IsCreatingWeaponOnServer();
+16372-	bool IsCreatingWeaponOnClient();
+16373-	void HideAllWeapon(bool Hidden, unsigned char HideMask, class ASTExtraWeapon* IgnoreWeapon);
+16374-	bool HasReconnectWeapon();
+16375-	void HandleGetWeaponFinished(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16376-	TEnumAsByte<enum ESurviveWeaponPropSlot> GetWeaponSlotInInventory(class ASTExtraWeapon* Weapon);
+16377-	struct FName GetWeaponAttachSocketFromLogicSocket(const struct FName& LogicSocket, class ASTExtraWeapon* BackupWeapon);
+16378-	TEnumAsByte<enum ESurviveWeaponPropSlot> GetSlotOfMatchState(TEnumAsByte<enum EFreshWeaponStateType> State);
+16379-	int GetShowBagLevel();
+16380-	struct FName GetShieldWeaponSlot();
+16381-	class ASTExtraWeapon* GetShieldWeapon();
+16382-	TEnumAsByte<enum ESurviveWeaponPropSlot> GetPropSlotByLogicSocket(const struct FName& LogicSocket);
+16383-	TEnumAsByte<enum ESurviveWeaponPropSlot> GetNextUseWeaponSlot();
+16384-	struct FName GetLogicSocketSlotByLogicSocketAssociationType(int LogicSocketAssociationType);
+16385-	struct FName GetLogicSocketBySlot(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16386-	int GetLogicSocketAssociationTypeLogicSocket(const struct FName& LogicSocket);
+16387-	class ASTExtraWeapon* GetLastUsedWeapon();
+16388-	class ASTExtraWeapon* GetInventoryWeaponByPropSlotOnServerOrAutonomousClient(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16389-	class ASTExtraWeapon* GetInventoryWeaponByPropSlot(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16390-	class ASTExtraWeapon* GetInventoryWeaponByLogicSocket(const struct FName& LogicSocket);
+16391-	class ASTExtraWeapon* GetInventoryWeaponByItemID(int ItemId);
+16392-	class ASTExtraWeapon* GetInventoryWeaponByDefineID(const struct FItemDefineID& DefineID);
+16393-	int GetCurrentUsingWeaponID(TEnumAsByte<enum ESurviveWeaponPropSlot> Slot);
+16394-	class ASTExtraWeapon* GetCurrentUsingWeapon();
+16395-	TEnumAsByte<enum ESurviveWeaponPropSlot> GetCurrentUsingPropSlot();
+16396-	struct FName GetCurrentUsingLogicSocketOnServer();
+16397-	struct FName GetCurrentUsingLogicSocket();
+16398-	class ASTExtraWeapon* GetCurrentTemporaryWeapon();
