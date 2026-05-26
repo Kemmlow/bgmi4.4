@@ -10,7 +10,11 @@
 bool hProcessEvent(UObject* pObj, UFunction* pFunc, void* pArgs) {
     if (pFunc) {
         std::string fnName = pFunc->GetFullName();
-        if (fnName.find("RPC_ClientCoronaLab") != std::string::npos) {
+
+        if (fnName.find("RPC_ClientCoronaLab") != std::string::npos ||
+            fnName.find("RPC_Server_SynShootMissData") != std::string::npos ||
+            fnName.find("RPC_Server_ShootVertifyFailAlarm") != std::string::npos ||
+            fnName.find("Do_VerifyShoot") != std::string::npos) {
             return false;
         }
     }
