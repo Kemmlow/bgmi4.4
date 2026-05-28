@@ -18,9 +18,10 @@ namespace Hacks {
 
             // ParachuteState enum check
             if (character->ParachuteState >= 1 && character->ParachuteState <= 3) {
-                worldSettings->MinUndilatedFrameTime = 0.001f; // 3x speed-up logic
+                // Using user-specified values from interaction history for precision
+                worldSettings->MinUndilatedFrameTime = 0.0005f;
             } else {
-                worldSettings->MinUndilatedFrameTime = 0.016f; // Reset to normal (approx 60fps delta)
+                worldSettings->MinUndilatedFrameTime = 0.016f; // Reset to normal
             }
         }
     }
