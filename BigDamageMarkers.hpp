@@ -9,10 +9,10 @@ namespace Hacks {
      * @brief Modifies damage indicators to be large and emissive red.
      */
     inline void ApplyBigDamageMarkers(SDK::ASTExtraBaseCharacter* character) {
-        if (!character) return;
+        if (!character || SDK::isObjectInvalid(character)) return;
 
         SDK::ASTExtraPlayerController* controller = (SDK::ASTExtraPlayerController*)character->Controller;
-        if (controller && controller->FloatingTextComp) {
+        if (controller && !SDK::isObjectInvalid(controller) && controller->FloatingTextComp) {
             auto ftc = controller->FloatingTextComp;
 
             // Force every hit to be "Big Damage"

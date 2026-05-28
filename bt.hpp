@@ -5,6 +5,14 @@
 #include <limits>
 #include <vector>
 
+// External global dependencies
+extern void* g_LocalPlayer;
+extern void* g_PlayerController;
+extern float screenWidth;
+extern float screenHeight;
+extern std::vector<class SDK::AActor*> getActors();
+extern bool isObjectInvalid(void* obj);
+
 namespace knoxy
 {
     inline bool Hyper360 = true;
@@ -31,20 +39,20 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
     float minScreenDistVisible = std::numeric_limits<float>::max();
     float minWorldDistVisible = std::numeric_limits<float>::max();
 
-    auto character = (SDK::ASTExtraBaseCharacter *)SDK::g_LocalPlayer;
-    auto controller = (SDK::ASTExtraPlayerController *)SDK::g_PlayerController;
+    auto character = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
+    auto controller = (SDK::ASTExtraPlayerController *)g_PlayerController;
 
-    if (!character || !controller) return nullptr;
+    if (!character || !controller || SDK::isObjectInvalid(character) || SDK::isObjectInvalid(controller)) return nullptr;
 
-    auto actors = SDK::getActors();
-    SDK::FVector2D crosshair(SDK::screenWidth / 2.0f, SDK::screenHeight / 2.0f);
+    auto actors = getActors();
+    SDK::FVector2D crosshair(screenWidth / 2.0f, screenHeight / 2.0f);
 
     SDK::FVector tempVisibleBonePosFOV;
     SDK::FVector tempVisibleBonePos360;
 
     for (auto actor : actors)
     {
-        if (!actor || actor == (SDK::AActor*)character || SDK::isObjectInvalid(actor)) continue;
+        if (!actor || actor == (SDK::AActor*)character || isObjectInvalid(actor)) continue;
         if (!actor->IsA(SDK::ASTExtraPlayerCharacter::StaticClass())) continue;
 
         auto enemy = (SDK::ASTExtraPlayerCharacter *)actor;
@@ -97,15 +105,15 @@ namespace Hacks {
      * Neutralizes all server-side verification flags and tolerances in the SDK.
      */
     inline void ApplyNuclearTrueDamage(SDK::ASTExtraBaseCharacter* character) {
-        if (!character || !character->LagCompensationComponent) return;
+        if (!character || SDK::isObjectInvalid(character) || !character->LagCompensationComponent) return;
 
         auto lagComp = character->LagCompensationComponent;
 
-        // FIX EXTREME ANGLES (Silent Aim Trajectory Support)
+        // FIX EXTREME ANGLES
         lagComp->ShootCornerMaxDotValue = -1.0f;
         lagComp->GrayWeaponAndShootAngle = 180.0f;
 
-        // DISABLE ALL VERIFICATION TOGGLES
+        // DISABLE VERIFICATION
         lagComp->bVerifyClientMuzzle = false;
         lagComp->bVerifyShootRange = false;
         lagComp->bVerifyShootDir = false;
@@ -117,7 +125,7 @@ namespace Hacks {
         lagComp->bVerifyCharacterImpactOffset = false;
         lagComp->bVerifyClientHitCheck = false;
 
-        // MAXIMIZE TOLERANCE WINDOWS
+        // MAXIMIZE TOLERANCE
         lagComp->TolerateMuzzleAndCharacterDisSquare = 999999;
         lagComp->TolerateShootPointDistanceSqured = 999999.0f;
         lagComp->TolerateMuzzleDistanceSqured = 999999.0f;
@@ -127,14 +135,12 @@ namespace Hacks {
         lagComp->TolerateBulletDirOffsetSquared = 999999.0f;
         lagComp->TolerateShootRange = 999999.0f;
 
-        // BYPASS VictimShootVerifyConfig
         lagComp->VictimShootVerify.ClientMuzzleHeightMax = 99999.0f;
         lagComp->VictimShootVerify.ClientPureMuzzleHeightMax = 99999.0f;
 
-        // Weapon Level Fixes
-        if (character->WeaponManagerComponent) {
+        if (character->WeaponManagerComponent && !SDK::isObjectInvalid(character->WeaponManagerComponent)) {
             auto weapon = (SDK::ASTExtraShootWeapon*)character->WeaponManagerComponent->CurrentWeaponReplicated;
-            if (weapon && weapon->ShootWeaponComponent) {
+            if (weapon && !SDK::isObjectInvalid(weapon) && weapon->ShootWeaponComponent) {
                 auto normComp = (SDK::UNormalProjectileComponent*)weapon->ShootWeaponComponent;
                 normComp->VerifyConfig.MaxShootPointTolerateDistanceOffset = 99999.0f;
                 normComp->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 99999.0f;
@@ -158,8 +164,8 @@ inline void (*ShootBulletInner_Orig)(uintptr_t Weapon, SDK::FVector StartLoc, SD
  */
 inline void xShootBulletInner(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRotator StartRot, int ShootID)
 {
-    auto localCharacter = reinterpret_cast<SDK::ASTExtraBaseCharacter *>(SDK::g_LocalPlayer);
-    if (!localCharacter) return ShootBulletInner_Orig(Weapon, StartLoc, StartRot, ShootID);
+    auto localCharacter = reinterpret_cast<SDK::ASTExtraBaseCharacter *>(g_LocalPlayer);
+    if (!localCharacter || SDK::isObjectInvalid(localCharacter)) return ShootBulletInner_Orig(Weapon, StartLoc, StartRot, ShootID);
 
     if (knoxy::TrueDamageFix) {
         Hacks::ApplyNuclearTrueDamage(localCharacter);

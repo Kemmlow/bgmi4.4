@@ -11,7 +11,6 @@ namespace Hacks {
      * Includes stability checks to prevent crashes during loading screens.
      */
     inline void ApplyFastReload(SDK::ASTExtraBaseCharacter* character) {
-        // --- STABILITY CHECK ---
         if (!character || SDK::isObjectInvalid(character)) return;
 
         // 1. NEUTRALIZE PLAYER ANTI-CHEAT MANAGER

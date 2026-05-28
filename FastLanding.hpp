@@ -12,7 +12,7 @@ namespace Hacks {
      * Normal/Reset phase: 0.0005f
      */
     inline void ApplyFastLanding(SDK::ASTExtraBaseCharacter* character) {
-        if (!character) return;
+        if (!character || SDK::isObjectInvalid(character)) return;
 
         SDK::UWorld* world = SDK::UCommonLuaLibrary::GetGWorld();
         if (world && world->PersistentLevel && world->PersistentLevel->WorldSettings) {
