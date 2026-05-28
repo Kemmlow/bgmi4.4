@@ -7,7 +7,9 @@ namespace Hacks {
 
     /**
      * @brief 3x Fast Landing Hack.
-     * Speeds up world simulation during parachute phase.
+     * Fixed logic based on user snippet:
+     * Speed-up phase: 0.050f
+     * Normal/Reset phase: 0.0005f
      */
     inline void ApplyFastLanding(SDK::ASTExtraBaseCharacter* character) {
         if (!character) return;
@@ -18,10 +20,9 @@ namespace Hacks {
 
             // ParachuteState enum check
             if (character->ParachuteState >= 1 && character->ParachuteState <= 3) {
-                // Using user-specified values from interaction history for precision
-                worldSettings->MinUndilatedFrameTime = 0.0005f;
+                worldSettings->MinUndilatedFrameTime = 0.050f;
             } else {
-                worldSettings->MinUndilatedFrameTime = 0.016f; // Reset to normal
+                worldSettings->MinUndilatedFrameTime = 0.0005f;
             }
         }
     }

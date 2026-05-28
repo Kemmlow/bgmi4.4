@@ -1,97 +1,91 @@
 // Credits : @knoxy_dev
 #pragma once
 
-#include "SDK.hpp"
+#include <stdint.h>
 
 /**
  * @brief Singular Hyper-Fix Car Fly Function.
- * Completely neutralizes vehicle anti-cheat and enforces smooth +50m fly logic.
- * Handles seat switching and driver validation.
- * @param localPlayer The pointer to ASTExtraBaseCharacter (local).
+ * Refined to use raw offsets to bypass SDK inheritance errors.
+ * Logic: Smooth +50m ascent with absolute anti-cheat destruction.
  */
-inline void ApplyHyperCarFly(SDK::ASTExtraBaseCharacter* localPlayer) {
+inline void ApplyHyperCarFly(uintptr_t localPlayer) {
     if (!localPlayer) return;
 
-    // --- STATIC STATE MANAGEMENT ---
+    // --- STATIC STATE ---
     static uintptr_t lastVehicle = 0;
     static int lastSeat = -1;
     static float startHeight = 0.0f;
     static float currentOffset = 0.0f;
 
-    // --- DRIVER VALIDATION (0x2E18: SeatIdx, 0x2E20: Attached) ---
-    int seatIdx = localPlayer->VehicleSeatIdx;
-    bool isAttached = localPlayer->bIsAttachedToVehicle;
-    auto vehicle = localPlayer->LastAttachedVehicle;
+    // --- RAW DATA ACCESS ---
+    // localPlayer + 0x2E18: VehicleSeatIdx (int)
+    // localPlayer + 0x2E20: bIsAttachedToVehicle (bool)
+    // localPlayer + 0x2E08: LastAttachedVehicle (uintptr_t)
+    int seatIdx = *(int*)(localPlayer + 0x2E18);
+    bool isAttached = *(bool*)(localPlayer + 0x2E20);
+    uintptr_t vehicle = *(uintptr_t*)(localPlayer + 0x2E08);
 
-    // If not driver or not in vehicle, reset and exit
+    // RESET & EXIT LOGIC (Only fly when driver)
     if (!isAttached || seatIdx != 0 || !vehicle) {
         lastVehicle = 0;
         lastSeat = -1;
         return;
     }
 
-    // --- RESET LOGIC FOR SEAT SWITCHING / NEW VEHICLE ---
-    if ((uintptr_t)vehicle != lastVehicle || seatIdx != lastSeat) {
-        lastVehicle = (uintptr_t)vehicle;
+    // STATE INITIALIZATION (Handles seat swaps and new vehicles)
+    if (vehicle != lastVehicle || seatIdx != lastSeat) {
+        lastVehicle = vehicle;
         lastSeat = seatIdx;
         currentOffset = 0.0f;
-        startHeight = vehicle->ReplicatedMovement.Location.Z;
+        // AActor -> ReplicatedMovement (0x0110) -> Location (0x0) -> Z (0x8)
+        startHeight = *(float*)(vehicle + 0x0110 + 0x18 + 0x8);
     }
 
-    // --- NUCLEAR SDK ANTI-CHEAT DESTRUCTION ---
+    // --- ANTI-CHEAT DESTRUCTION ---
 
-    // 1. Neutralize VehicleAntiCheat Component
-    if (vehicle->VehicleAntiCheat) {
-        auto ac = (SDK::UWheeledVehicleProtectionComponent*)vehicle->VehicleAntiCheat;
-        ac->bEnablePreventFly = false;
-        ac->bEnableProtection = false;
-        ac->bEnableTick = false;
-        ac->MaxResetDistanceSq = 999999999.0f;
+    // 1. Neutralize VehicleAntiCheat Component (vehicle + 0x0C90)
+    uintptr_t acComp = *(uintptr_t*)(vehicle + 0x0C90);
+    if (acComp) {
+        *(bool*)(acComp + 0x0490) = false; // bEnablePreventFly
+        *(bool*)(acComp + 0x0270) = false; // bEnableProtection
+        *(bool*)(acComp + 0x0441) = false; // bEnableTick
     }
 
-    // 2. Neutralize VehicleSyncComponent
-    if (vehicle->VehicleSyncComponent) {
-        auto sync = vehicle->VehicleSyncComponent;
-        sync->bVehicleNeedFlyVelCheck = false;
-        sync->MaxAllowJumpHeight = 999999.0f;
-        sync->MaxSyncSpeedZDelta = 999999.0f;
-        sync->bEnableValidateVelNew = false;
+    // 2. Neutralize VehicleSyncComponent (vehicle + 0x0C10)
+    uintptr_t syncComp = *(uintptr_t*)(vehicle + 0x0C10);
+    if (syncComp) {
+        *(bool*)(syncComp + 0x02B8) = false;  // bVehicleNeedFlyVelCheck
+        *(float*)(syncComp + 0x02C4) = 999999.0f; // MaxAllowJumpHeight
+        *(float*)(syncComp + 0x02C8) = 999999.0f; // MaxSyncSpeedZDelta
     }
 
-    // 3. Neutralize Movement Anti-Cheat
-    if (vehicle->VehicleMovement) {
-        auto move = vehicle->VehicleMovement;
-        move->bSpecialAntiCheatSpeed = false;
-        move->AntiCheatSetup.AntiSideswayCheat = false;
-        move->AntiCheatSetup.MaxVelZ = 999999.0f;
+    // 3. Movement Component Bypass (vehicle + 0x1E10)
+    uintptr_t moveComp = *(uintptr_t*)(vehicle + 0x1E10);
+    if (moveComp) {
+        *(bool*)(moveComp + 0x0C40) = false; // bSpecialAntiCheatSpeed
     }
 
-    // 4. Global Bypasses
-    localPlayer->EnableDyingInVehicleMeshCorrect = false; // AC bypass
-    vehicle->bCheckOnGround = false;
-    vehicle->bRepPhysicsSleep = false;
-
-    // --- FLUID HEIGHT INTERPOLATION (+50m / 5000 units) ---
-    const float targetZ = 5000.0f;
-    const float smoothRate = 40.0f;
+    // --- FLUID INTERPOLATION (+50m) ---
+    const float targetZ = 5000.0f; // 50 meters
+    const float fluidRate = 45.0f;
 
     if (currentOffset < targetZ) {
-        currentOffset += smoothRate;
+        currentOffset += fluidRate;
         if (currentOffset > targetZ) currentOffset = targetZ;
     }
 
-    // --- POSITION ENFORCEMENT ---
+    // --- POSITION & VELOCITY ENFORCEMENT ---
+    // Update ReplicatedMovement Location.Z
+    *(float*)(vehicle + 0x0110 + 0x18 + 0x8) = startHeight + currentOffset;
 
-    // a. Update ReplicatedMovement for Server Sync
-    vehicle->ReplicatedMovement.Location.Z = startHeight + currentOffset;
-
-    // b. Update RootComponent for Local Fluidity
-    if (vehicle->RootComponent) {
-        vehicle->RootComponent->RelativeLocation.Z = startHeight + currentOffset;
+    // Update RootComponent RelativeLocation.Z (vehicle + 0x0208 -> SceneComp + 0x118)
+    uintptr_t root = *(uintptr_t*)(vehicle + 0x0208);
+    if (root) {
+        *(float*)(root + 0x118 + 0x8) = startHeight + currentOffset;
     }
 
-    // c. Kill Z-Velocity to prevent physics jitter
-    if (vehicle->VehicleMovement) {
-        vehicle->VehicleMovement->Velocity.Z = 0.0f;
+    // Kill Z-Velocity jitter (moveComp + 0x018C -> Velocity + 0x8 -> Z)
+    if (moveComp) {
+        *(float*)(moveComp + 0x018C + 0x8) = 0.0f;
     }
 }
