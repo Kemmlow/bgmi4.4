@@ -5,6 +5,7 @@
 #include <limits>
 #include <algorithm>
 #include <vector>
+#include <cmath>
 
 namespace knoxy
 {
@@ -29,7 +30,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
     auto character = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
     auto controller = (SDK::ASTExtraPlayerController *)g_PlayerController;
 
-    if (!character || !controller)
+    if (!character || !controller || !controller->PlayerCameraManager)
         return nullptr;
 
     SDK::ASTExtraPlayerCharacter *bestFOVTarget = nullptr;
@@ -44,7 +45,6 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
     SDK::FVector2D crosshair(screenWidth / 2.0f, screenHeight / 2.0f);
 
     auto actors = getActors();
-    SDK::FVector viewPos = character->GetGunOwnerHeadLocation();
 
     for (auto actor : actors)
     {
@@ -67,7 +67,8 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
         for (const char *boneName : TargetBonesFallback)
         {
             SDK::FVector bonePos = enemy->GetBonePos(boneName, {0, 0, 0});
-            if (controller->LineOfSightTo(enemy, viewPos, false))
+            // LineOfSightTo: Checks visibility from Camera Manager to Bone
+            if (controller->LineOfSightTo(controller->PlayerCameraManager, bonePos, false))
             {
                 foundBonePos = bonePos;
                 isVisible = true;
@@ -78,7 +79,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
         if (!isVisible)
             continue;
 
-        // FOV Priority
+        // FOV Scan
         SDK::FVector2D screenPos;
         if (controller->ProjectWorldLocationToScreen(foundBonePos, true, &screenPos))
         {
@@ -91,9 +92,9 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
             }
         }
 
-        // Parachute Priority
+        // Parachute Scan
         uint8_t pState = (uint8_t)enemy->ParachuteState;
-        if (pState == 1 || pState == 2) // PS_FreeFall, PS_Opening
+        if (pState == 1 || pState == 2)
         {
             if (worldDist < minParachuteDist)
             {
@@ -123,7 +124,6 @@ namespace Hacks
 {
     /**
      * @brief Nuclear "True Damage" Fix.
-     * Neutralizes all server-side verification flags and tolerances in the SDK.
      */
     inline void ApplyNuclearTrueDamage(SDK::ASTExtraBaseCharacter *character)
     {
@@ -132,11 +132,9 @@ namespace Hacks
 
         auto lagComp = character->LagCompensationComponent;
 
-        // FIX EXTREME ANGLES (Silent Aim Trajectory Support)
         lagComp->ShootCornerMaxDotValue = -1.0f;
         lagComp->GrayWeaponAndShootAngle = 180.0f;
 
-        // DISABLE ALL VERIFICATION TOGGLES
         lagComp->bVerifyClientMuzzle = false;
         lagComp->bVerifyShootRange = false;
         lagComp->bVerifyShootDir = false;
@@ -148,9 +146,8 @@ namespace Hacks
         lagComp->bVerifyCharacterImpactOffset = false;
         lagComp->bVerifyClientHitCheck = false;
 
-        // MAXIMIZE TOLERANCE WINDOWS
         float inf = 999999.0f;
-        lagComp->TolerateMuzzleAndCharacterDisSquare = (int)inf;
+        lagComp->TolerateMuzzleAndCharacterDisSquare = 999999;
         lagComp->TolerateShootPointDistanceSqured = inf;
         lagComp->TolerateMuzzleDistanceSqured = inf;
         lagComp->TolerateBulletImpactOffsetDistSqured = inf;
@@ -158,12 +155,9 @@ namespace Hacks
         lagComp->TolerateBulletDirCheckDistance = inf;
         lagComp->TolerateBulletDirOffsetSquared = inf;
         lagComp->TolerateShootRange = inf;
-
-        // BYPASS VictimShootVerifyConfig
         lagComp->VictimShootVerify.ClientMuzzleHeightMax = inf;
         lagComp->VictimShootVerify.ClientPureMuzzleHeightMax = inf;
 
-        // Weapon Level Fixes
         if (character->WeaponManagerComponent)
         {
             auto weapon = (SDK::ASTExtraShootWeapon *)character->WeaponManagerComponent->CurrentWeaponReplicated;
@@ -177,11 +171,6 @@ namespace Hacks
                 normComp->VerifyConfig.bVerifyClientFlySpeed = false;
                 normComp->VerifyConfig.bVerifyBulletScDiff = false;
                 normComp->VerifyConfig.bVerifyImpactPointDiff = false;
-
-                if (normComp->ShootWeaponEntityComponent)
-                {
-                    normComp->ShootWeaponEntityComponent->BulletNumSingleShot = 1;
-                }
             }
         }
     }
@@ -191,7 +180,7 @@ namespace Hacks
 inline void (*ShootBulletInner_Orig)(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRotator StartRot, int ShootID);
 
 /**
- * @brief Final Hyper ShootBulletInner Hook with True Damage & Predictive Skyshoot.
+ * @brief Fixed xShootBulletInner Hook with True Damage & Hyper Tracking.
  */
 inline void xShootBulletInner(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRotator StartRot, int ShootID)
 {
@@ -215,9 +204,8 @@ inline void xShootBulletInner(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRot
             float distanceCm = localCharacter->GetDistanceTo(target);
             float timeOfFlight = distanceCm / knoxy::CustomBulletSpeed;
 
-            SDK::FVector predictedAimPos = targetedBonePosition + (targetVelocity * timeOfFlight);
+            SDK::FVector predictedAimPos = targetedBonePosition + (targetVelocity * (timeOfFlight + 0.030f));
 
-            // Skyshoot vertical lead
             uint8_t pState = (uint8_t)target->ParachuteState;
             if (pState == 1 || pState == 2)
             {
