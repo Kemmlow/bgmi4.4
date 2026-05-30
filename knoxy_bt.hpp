@@ -296,7 +296,7 @@ inline void xhit_Fix(bool xhit, uintptr_t localPlayer)
                 hit.DefaultAlpha = 1.0f;
                 hit.AlphaDecreaseSpeed = 0.0f;
 
-                for (int i = 0; i < hit.IconList.Count; i++)
+                for (int i = 0; i < hit.IconList.Num(); i++)
                 {
                     auto &icon = hit.IconList[i];
                     icon.Scale = 4.0f;
