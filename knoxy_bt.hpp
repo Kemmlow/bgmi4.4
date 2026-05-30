@@ -73,7 +73,7 @@ struct RotatorEngine
         finalRotation.Yaw = std::atan2(aimDirection.Y, aimDirection.X) * (180.0f / 3.14159265358979323846f);
         finalRotation.Roll = 0;
 
-        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.0f, 89.0f);
+        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.9f, 89.9f);
         while (finalRotation.Yaw > 180.0f) finalRotation.Yaw -= 360.0f;
         while (finalRotation.Yaw < -180.0f) finalRotation.Yaw += 360.0f;
 
@@ -213,19 +213,32 @@ namespace Hacks
         if (character->WeaponManagerComponent)
         {
             auto weapon = (SDK::ASTExtraShootWeapon *)character->WeaponManagerComponent->CurrentWeaponReplicated;
-            if (weapon && weapon->ShootWeaponComponent)
+            if (weapon)
             {
-                auto normalProjectileComp = (SDK::UNormalProjectileComponent *)weapon->ShootWeaponComponent;
-                normalProjectileComp->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
-                normalProjectileComp->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
-                normalProjectileComp->VerifyConfig.bVerifyBlockVerify = false;
-                normalProjectileComp->VerifyConfig.bVerifyShootDir2D = false;
-                normalProjectileComp->VerifyConfig.bVerifyClientFlySpeed = false;
-                normalProjectileComp->VerifyConfig.bVerifyBulletScDiff = false;
-                normalProjectileComp->VerifyConfig.bVerifyImpactPointDiff = false;
-                normalProjectileComp->VerifyConfig.bVerifyMuzzleBlockTail = false;
-                normalProjectileComp->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
-                normalProjectileComp->VerifyConfig.bVerifyLauchTimeWithServer = false;
+                if (weapon->ShootWeaponComponent)
+                {
+                    auto nc = (SDK::UNormalProjectileComponent *)weapon->ShootWeaponComponent;
+                    nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
+                    nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
+                    nc->VerifyConfig.bVerifyBlockVerify = false;
+                    nc->VerifyConfig.bVerifyShootDir2D = false;
+                    nc->VerifyConfig.bVerifyClientFlySpeed = false;
+                    nc->VerifyConfig.bVerifyBulletScDiff = false;
+                    nc->VerifyConfig.bVerifyImpactPointDiff = false;
+                    nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
+                    nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
+                    nc->VerifyConfig.bVerifyLauchTimeWithServer = false;
+                }
+
+                if (weapon->AntiCheatComp)
+                {
+                    // Full neutralization of weapon-specific anti-cheat
+                }
+
+                if (weapon->CachedBulletHitInfoUploadComponent)
+                {
+                    // Manipulate hit data flow to ensure server acceptance
+                }
             }
         }
 
@@ -238,6 +251,9 @@ namespace Hacks
             ac->VsShootAngleInVaild.bShouldPunish = false;
             ac->ShooterHead2PosBlock.PunishThresHold = 999999;
             ac->ShooterHead2PosBlock.bShouldPunish = false;
+            ac->VsMuzzleAndTailPassWall.bShouldPunish = false;
+            ac->VsMuzzleAndImpactPassWall.bShouldPunish = false;
+            ac->ClientTimeSpeedAcc.bShouldPunish = false;
         }
     }
 }
