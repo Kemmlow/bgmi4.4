@@ -37,7 +37,7 @@ struct PredictionEngine
 
         float latencyDelay = 0.033f;
         if (isParachuting) {
-            latencyDelay = 0.048f + (distance / 100000.0f);
+            latencyDelay = 0.045f + (distance / 100000.0f);
         } else {
             float speedMagnitude = targetVelocity.Size();
             latencyDelay = 0.030f + (speedMagnitude / 1000.0f * 0.015f) + (distance / 150000.0f);
@@ -63,7 +63,7 @@ struct RotatorEngine
         SDK::FVector aimDirection = targetLocation - muzzleLocation;
         float distance3D = std::sqrt(aimDirection.X * aimDirection.X + aimDirection.Y * aimDirection.Y + aimDirection.Z * aimDirection.Z);
 
-        if (distance3D < 0.1f) return SDK::FRotator(0, 0, 0);
+        if (distance3D < 0.1f) return {0, 0, 0};
 
         SDK::FRotator finalRotation;
         float pitchRatio = aimDirection.Z / distance3D;
@@ -84,7 +84,7 @@ struct RotatorEngine
 inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTargetPos)
 {
     auto character = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
-    auto controller = (SDK::ASTExtraPlayerController *)g_LocalController;
+    auto controller = (SDK::ASTExtraPlayerController *)g_PlayerController;
 
     if (!character || !controller || !controller->PlayerCameraManager)
         return nullptr;
@@ -170,63 +170,62 @@ namespace Hacks
     {
         if (!character) return;
 
-        auto controller = (SDK::ASTExtraPlayerController*)g_LocalController;
+        auto controller = (SDK::ASTExtraPlayerController*)g_PlayerController;
 
         if (character->LagCompensationComponent)
         {
-            auto lc = character->LagCompensationComponent;
-            lc->ShootCornerMaxDotValue = -1.0f;
-            lc->GrayWeaponAndShootAngle = 180.0f;
-            lc->bVerifyGunPos = false;
-            lc->bVerifyClientMuzzle = false;
-            lc->bVerifyShootRange = false;
-            lc->bVerifyShootDir = false;
-            lc->bVerifyMuzzleImpactDir = false;
-            lc->bVerifyMuzzleImpactDirIgnoreCrawl = false;
-            lc->bVerifyShootPosInHistory = false;
-            lc->bVerifyMuzzleLocus = false;
-            lc->bVerifyShootPoint = false;
-            lc->bVerifyBulletImpactOffset = false;
-            lc->bVerifyClientHitAndBullet = false;
-            lc->bVerifyCharacterImpactOffset = false;
-            lc->bVerifyInParachuteShootPoint = false;
-            lc->bVerifyShooterHead2PosIsBlock = false;
-            lc->bVerifyClientHitCheck = false;
-            lc->bVerifyShootPointPassWall = false;
+            auto lagComp = character->LagCompensationComponent;
+            lagComp->ShootCornerMaxDotValue = -1.0f;
+            lagComp->GrayWeaponAndShootAngle = 180.0f;
+            lagComp->bVerifyGunPos = false;
+            lagComp->bVerifyClientMuzzle = false;
+            lagComp->bVerifyShootRange = false;
+            lagComp->bVerifyShootDir = false;
+            lagComp->bVerifyMuzzleImpactDir = false;
+            lagComp->bVerifyMuzzleImpactDirIgnoreCrawl = false;
+            lagComp->bVerifyShootPosInHistory = false;
+            lagComp->bVerifyMuzzleLocus = false;
+            lagComp->bVerifyShootPoint = false;
+            lagComp->bVerifyBulletImpactOffset = false;
+            lagComp->bVerifyClientHitAndBullet = false;
+            lagComp->bVerifyCharacterImpactOffset = false;
+            lagComp->bVerifyInParachuteShootPoint = false;
+            lagComp->bVerifyShooterHead2PosIsBlock = false;
+            lagComp->bVerifyClientHitCheck = false;
+            lagComp->bVerifyShootPointPassWall = false;
 
-            float f = 999999.0f;
-            lc->TolerateMuzzleAndCharacterDisSquare = 999999;
-            lc->TolerateShootPointDistanceSqured = f;
-            lc->TolerateMuzzleDistanceSqured = f;
-            lc->TolerateBulletImpactOffsetDistSqured = f;
-            lc->TolerateOwnerAndBulletDist = f;
-            lc->TolerateBulletDirCheckDistance = f;
-            lc->TolerateBulletDirOffsetSquared = f;
-            lc->TolerateShootRange = f;
-            lc->TolerateHitDataDelayTime = f;
-            lc->TolerateHitDataDelayTimeShootCorner = f;
-            lc->TolerateFlyDis = f;
-            lc->VictimShootVerify.ClientMuzzleHeightMax = f;
-            lc->VictimShootVerify.ClientPureMuzzleHeightMax = f;
+            float infinity = 999999.0f;
+            lagComp->TolerateMuzzleAndCharacterDisSquare = 999999;
+            lagComp->TolerateShootPointDistanceSqured = infinity;
+            lagComp->TolerateMuzzleDistanceSqured = infinity;
+            lagComp->TolerateBulletImpactOffsetDistSqured = infinity;
+            lagComp->TolerateOwnerAndBulletDist = infinity;
+            lagComp->TolerateBulletDirCheckDistance = infinity;
+            lagComp->TolerateBulletDirOffsetSquared = infinity;
+            lagComp->TolerateShootRange = infinity;
+            lagComp->TolerateHitDataDelayTime = infinity;
+            lagComp->TolerateHitDataDelayTimeShootCorner = infinity;
+            lagComp->TolerateFlyDis = infinity;
+            lagComp->VictimShootVerify.ClientMuzzleHeightMax = infinity;
+            lagComp->VictimShootVerify.ClientPureMuzzleHeightMax = infinity;
         }
 
         if (character->WeaponManagerComponent)
         {
-            auto w = (SDK::ASTExtraShootWeapon *)character->WeaponManagerComponent->CurrentWeaponReplicated;
-            if (w && w->ShootWeaponComponent)
+            auto weapon = (SDK::ASTExtraShootWeapon *)character->WeaponManagerComponent->CurrentWeaponReplicated;
+            if (weapon && weapon->ShootWeaponComponent)
             {
-                auto nc = (SDK::UNormalProjectileComponent *)w->ShootWeaponComponent;
-                nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
-                nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
-                nc->VerifyConfig.bVerifyBlockVerify = false;
-                nc->VerifyConfig.bVerifyBulletScDiff = false;
-                nc->VerifyConfig.bVerifyShootDir2D = false;
-                nc->VerifyConfig.bVerifyImpactPointDiff = false;
-                nc->VerifyConfig.bVerifyWeaponFireInfoTimeForcePunish = false;
-                nc->VerifyConfig.bVerifyClientFlySpeed = false;
-                nc->VerifyConfig.bVerifyLauchTimeWithServer = false;
-                nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
-                nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
+                auto normalProjectileComp = (SDK::UNormalProjectileComponent *)weapon->ShootWeaponComponent;
+                normalProjectileComp->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
+                normalProjectileComp->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
+                normalProjectileComp->VerifyConfig.bVerifyBlockVerify = false;
+                normalProjectileComp->VerifyConfig.bVerifyShootDir2D = false;
+                normalProjectileComp->VerifyConfig.bVerifyClientFlySpeed = false;
+                normalProjectileComp->VerifyConfig.bVerifyBulletScDiff = false;
+                normalProjectileComp->VerifyConfig.bVerifyImpactPointDiff = false;
+                normalProjectileComp->VerifyConfig.bVerifyMuzzleBlockTail = false;
+                normalProjectileComp->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
+                normalProjectileComp->VerifyConfig.bVerifyLauchTimeWithServer = false;
             }
         }
 
@@ -243,25 +242,25 @@ inline void (*ShootBulletInner_Orig)(uintptr_t Weapon, SDK::FVector StartLoc, SD
 
 inline void xShootBulletInner(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRotator StartRot, int ShootID)
 {
-    auto lc = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
-    if (!lc)
+    auto localChar = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
+    if (!localChar)
         return ShootBulletInner_Orig(Weapon, StartLoc, StartRot, ShootID);
 
     if (knoxy::TrueDamageFix)
     {
-        Hacks::ApplyNuclearTrueDamage(lc);
+        Hacks::ApplyNuclearTrueDamage(localChar);
     }
 
     if (knoxy::BulletTrack)
     {
-        SDK::FVector tp(0, 0, 0);
-        SDK::ASTExtraPlayerCharacter *t = GetKnoxyHyperTarget(tp);
+        SDK::FVector targetPos(0, 0, 0);
+        SDK::ASTExtraPlayerCharacter *target = GetKnoxyHyperTarget(targetPos);
 
-        if (t)
+        if (target)
         {
-            SDK::FVector pp = PredictionEngine::Predict(lc, t, tp);
-            SDK::FRotator hr = RotatorEngine::Solve(StartLoc, pp);
-            return ShootBulletInner_Orig(Weapon, StartLoc, hr, ShootID);
+            SDK::FVector predictedPoint = PredictionEngine::Predict(localChar, target, targetPos);
+            SDK::FRotator finalRotation = RotatorEngine::Solve(StartLoc, predictedPoint);
+            return ShootBulletInner_Orig(Weapon, StartLoc, finalRotation, ShootID);
         }
     }
 
