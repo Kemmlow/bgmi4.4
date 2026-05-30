@@ -73,7 +73,7 @@ struct RotatorEngine
         finalRotation.Yaw = std::atan2(aimDirection.Y, aimDirection.X) * (180.0f / 3.14159265358979323846f);
         finalRotation.Roll = 0;
 
-        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.9f, 89.9f);
+        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.0f, 89.0f);
         while (finalRotation.Yaw > 180.0f) finalRotation.Yaw -= 360.0f;
         while (finalRotation.Yaw < -180.0f) finalRotation.Yaw += 360.0f;
 
@@ -269,4 +269,41 @@ inline void xShootBulletInner(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRot
     }
 
     return ShootBulletInner_Orig(Weapon, StartLoc, StartRot, ShootID);
+}
+
+inline void xhit_Fix(bool xhit, uintptr_t localPlayer)
+{
+    if (xhit)
+    {
+        auto character = (SDK::ASTExtraBaseCharacter *)localPlayer;
+        if (character && character->Controller)
+        {
+            auto controller = (SDK::ASTExtraPlayerController *)character->Controller;
+            if (controller && controller->MyHUD)
+            {
+                auto hud = (SDK::ASurviveHUD *)controller->MyHUD;
+                auto &hit = hud->HitPerform;
+
+                static float hue = 0.0f;
+                hue += 0.015f;
+                if (hue > 6.28f) hue = 0.0f;
+                SDK::FLinearColor rainbow = {(sin(hue) + 1.0f) / 2.0f, (sin(hue + 2.09f) + 1.0f) / 2.0f, (sin(hue + 4.18f) + 1.0f) / 2.0f, 1.0f};
+
+                hit.HeadExtraScale = 27.0f;
+                hit.AddSpreadScale = 15.75f;
+                hit.DefaultSpread = 180.0f;
+                hit.HitBodyDrawColor = hit.HitHeadDrawColor = hit.HitToDyingDrawColor = hit.HitToDeathDrawColor = rainbow;
+                hit.DefaultAlpha = 1.0f;
+                hit.AlphaDecreaseSpeed = 0.0f;
+
+                for (int i = 0; i < hit.IconList.Count; i++)
+                {
+                    auto &icon = hit.IconList[i];
+                    icon.Scale = 4.0f;
+                    icon.Alpha = 1.0f;
+                    icon.BlendInOutRatePerSec = 0.0f;
+                }
+            }
+        }
+    }
 }
