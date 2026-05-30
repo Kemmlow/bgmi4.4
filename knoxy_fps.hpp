@@ -7,20 +7,29 @@ namespace knoxy
 {
     /**
      * @brief Godly 165 FPS Universal Unlocker.
-     * Force-overwrites engine frame rate limits for liquid-smooth dominance.
+     * Force-patches the GameInstance and UserSettings to unlock high-frequency frames.
      */
-    inline void UnlockGodlyFPS(float targetFPS = 165.0f)
+    inline void UnlockGodlyFPS()
     {
+        // 1. Force Engine-Level Limit Overwrite
         auto settings = SDK::UGameUserSettings::GetGameUserSettings();
         if (settings)
         {
-            // Force member variable update
-            settings->FrameRateLimit = targetFPS;
-
-            // Execute engine-level application
-            settings->SetFrameRateLimit(targetFPS);
+            settings->FrameRateLimit = 165.0f;
+            settings->bUseVSync = false;
             settings->ApplySettings(false);
             settings->SaveSettings();
+        }
+
+        // 2. Force GameInstance State Override
+        auto world = SDK::UCommonLuaLibrary::GetGWorld();
+        if (world && world->OwningGameInstance)
+        {
+            // The actual MaxFPS logic resides in the GameInstance for mobile variants
+            uintptr_t instance = (uintptr_t)world->OwningGameInstance;
+
+            // Force Patch CurrentMaxFPS (Offset 0x1598)
+            *(int*)(instance + 0x1598) = 165;
         }
     }
 }
