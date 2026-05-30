@@ -1,4 +1,3 @@
-// Credits : @knoxy_dev
 #pragma once
 
 #include "SDK.hpp"
@@ -73,7 +72,7 @@ struct RotatorEngine
         finalRotation.Yaw = std::atan2(aimDirection.Y, aimDirection.X) * (180.0f / 3.14159265358979323846f);
         finalRotation.Roll = 0;
 
-        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.9f, 89.9f);
+        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.0f, 89.0f);
         while (finalRotation.Yaw > 180.0f) finalRotation.Yaw -= 360.0f;
         while (finalRotation.Yaw < -180.0f) finalRotation.Yaw += 360.0f;
 
@@ -97,7 +96,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
 
     SDK::FVector bestFOVPosition(0, 0, 0);
     SDK::FVector best360Position(0, 0, 0);
-    SDK::FVector2D screenCenter(screenWidth / 2.0f, screenHeight / 2.0f);
+    SDK::FVector2 Center(screenWidth / 2.0f, screenHeight / 2.0f);
 
     auto actors = getActors();
     SDK::FVector cameraLocation = controller->PlayerCameraManager->GetCameraLocation();
@@ -140,7 +139,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
         SDK::FVector2D screenPos;
         if (controller->ProjectWorldLocationToScreen(visibleBonePos, true, &screenPos))
         {
-            float screenDist = SDK::FVector2D::Distance(screenCenter, screenPos);
+            float screenDist = SDK::FVector2D::Distance(Center, screenPos);
             if (screenDist < minScreenDistance)
             {
                 minScreenDistance = screenDist;
@@ -171,6 +170,9 @@ namespace Hacks
         if (!character) return;
 
         auto controller = (SDK::ASTExtraPlayerController*)g_PlayerController;
+
+        character->bEnableSecurityCheck = false;
+        character->bEnableSecurity = false;
 
         if (character->LagCompensationComponent)
         {
@@ -215,6 +217,8 @@ namespace Hacks
             auto weapon = (SDK::ASTExtraShootWeapon *)character->WeaponManagerComponent->CurrentWeaponReplicated;
             if (weapon)
             {
+                weapon->bEnableAntiCheat = false;
+
                 if (weapon->ShootWeaponComponent)
                 {
                     auto nc = (SDK::UNormalProjectileComponent *)weapon->ShootWeaponComponent;
@@ -232,28 +236,37 @@ namespace Hacks
 
                 if (weapon->AntiCheatComp)
                 {
-                    // Full neutralization of weapon-specific anti-cheat
+                    weapon->AntiCheatComp->bEnableServerAntiCheat = false;
+                    weapon->AntiCheatComp->bEnableAntiCheat = false;
                 }
 
                 if (weapon->CachedBulletHitInfoUploadComponent)
                 {
-                    // Manipulate hit data flow to ensure server acceptance
+                    weapon->CachedBulletHitInfoUploadComponent->bShouldReportAntiCheat = false;
                 }
             }
         }
 
-        if (controller && controller->AntiCheatManagerComp)
+        if (controller)
         {
-            auto ac = controller->AntiCheatManagerComp;
-            ac->BulletDirError.PunishThresHold = 999999;
-            ac->BulletDirError.bShouldPunish = false;
-            ac->VsShootAngleInVaild.PunishThresHold = 999999;
-            ac->VsShootAngleInVaild.bShouldPunish = false;
-            ac->ShooterHead2PosBlock.PunishThresHold = 999999;
-            ac->ShooterHead2PosBlock.bShouldPunish = false;
-            ac->VsMuzzleAndTailPassWall.bShouldPunish = false;
-            ac->VsMuzzleAndImpactPassWall.bShouldPunish = false;
-            ac->ClientTimeSpeedAcc.bShouldPunish = false;
+            controller->bEnableSecurityCheck = false;
+            controller->bEnableSecurity = false;
+
+            if (controller->AntiCheatManagerComp)
+            {
+                auto ac = controller->AntiCheatManagerComp;
+                ac->BulletDirError.PunishThresHold = 999999;
+                ac->BulletDirError.bShouldPunish = false;
+                ac->VsShootAngleInVaild.PunishThresHold = 999999;
+                ac->VsShootAngleInVaild.bShouldPunish = false;
+                ac->ShooterHead2PosBlock.PunishThresHold = 999999;
+                ac->ShooterHead2PosBlock.bShouldPunish = false;
+                ac->VsMuzzleAndTailPassWall.bShouldPunish = false;
+                ac->VsMuzzleAndImpactPassWall.bShouldPunish = false;
+                ac->ClientTimeSpeedAcc.bShouldPunish = false;
+                ac->bOpenDetailDataCollect = false;
+                ac->bShouldReportAntiCheat = false;
+            }
         }
     }
 }
