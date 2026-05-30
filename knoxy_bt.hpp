@@ -37,17 +37,17 @@ struct PredictionEngine
 
         float latencyDelay = 0.033f;
         if (isParachuting) {
-            latencyDelay = 0.045f + (distance / 100000.0f);
+            latencyDelay = 0.055f + (distance / 80000.0f);
         } else {
             float speedMagnitude = targetVelocity.Size();
-            latencyDelay = 0.030f + (speedMagnitude / 1000.0f * 0.015f) + (distance / 150000.0f);
+            latencyDelay = 0.033f + (speedMagnitude / 1000.0f * 0.020f) + (distance / 120000.0f);
         }
 
         float totalExtrapolationTime = timeOfFlight + latencyDelay;
         SDK::FVector finalPredictedPos = targetBonePos + (relativeVelocity * totalExtrapolationTime);
 
         if (isParachuting) {
-            finalPredictedPos.Z += (targetVelocity.Z * 0.065f);
+            finalPredictedPos.Z += (targetVelocity.Z * 0.085f);
             float gravityCompensation = 0.5f * 981.0f * (timeOfFlight * timeOfFlight);
             finalPredictedPos.Z += gravityCompensation;
         }
@@ -73,7 +73,7 @@ struct RotatorEngine
         finalRotation.Yaw = std::atan2(aimDirection.Y, aimDirection.X) * (180.0f / 3.14159265358979323846f);
         finalRotation.Roll = 0;
 
-        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.0f, 89.0f);
+        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.9f, 89.9f);
         while (finalRotation.Yaw > 180.0f) finalRotation.Yaw -= 360.0f;
         while (finalRotation.Yaw < -180.0f) finalRotation.Yaw += 360.0f;
 
@@ -149,7 +149,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
             }
         }
 
-        float trackingWeight = isParachuting ? (worldDistance * 0.35f) : worldDistance;
+        float trackingWeight = isParachuting ? (worldDistance * 0.25f) : (worldDistance * 0.85f);
         if (trackingWeight < minWeightedDistance)
         {
             minWeightedDistance = trackingWeight;
@@ -174,40 +174,40 @@ namespace Hacks
 
         if (character->LagCompensationComponent)
         {
-            auto lagComp = character->LagCompensationComponent;
-            lagComp->ShootCornerMaxDotValue = -1.0f;
-            lagComp->GrayWeaponAndShootAngle = 180.0f;
-            lagComp->bVerifyGunPos = false;
-            lagComp->bVerifyClientMuzzle = false;
-            lagComp->bVerifyShootRange = false;
-            lagComp->bVerifyShootDir = false;
-            lagComp->bVerifyMuzzleImpactDir = false;
-            lagComp->bVerifyMuzzleImpactDirIgnoreCrawl = false;
-            lagComp->bVerifyShootPosInHistory = false;
-            lagComp->bVerifyMuzzleLocus = false;
-            lagComp->bVerifyShootPoint = false;
-            lagComp->bVerifyBulletImpactOffset = false;
-            lagComp->bVerifyClientHitAndBullet = false;
-            lagComp->bVerifyCharacterImpactOffset = false;
-            lagComp->bVerifyInParachuteShootPoint = false;
-            lagComp->bVerifyShooterHead2PosIsBlock = false;
-            lagComp->bVerifyClientHitCheck = false;
-            lagComp->bVerifyShootPointPassWall = false;
+            auto lc = character->LagCompensationComponent;
+            lc->ShootCornerMaxDotValue = -1.0f;
+            lc->GrayWeaponAndShootAngle = 180.0f;
+            lc->bVerifyGunPos = false;
+            lc->bVerifyClientMuzzle = false;
+            lc->bVerifyShootRange = false;
+            lc->bVerifyShootDir = false;
+            lc->bVerifyMuzzleImpactDir = false;
+            lc->bVerifyMuzzleImpactDirIgnoreCrawl = false;
+            lc->bVerifyShootPosInHistory = false;
+            lc->bVerifyMuzzleLocus = false;
+            lc->bVerifyShootPoint = false;
+            lc->bVerifyBulletImpactOffset = false;
+            lc->bVerifyClientHitAndBullet = false;
+            lc->bVerifyCharacterImpactOffset = false;
+            lc->bVerifyInParachuteShootPoint = false;
+            lc->bVerifyShooterHead2PosIsBlock = false;
+            lc->bVerifyClientHitCheck = false;
+            lc->bVerifyShootPointPassWall = false;
 
             float infinity = 999999.0f;
-            lagComp->TolerateMuzzleAndCharacterDisSquare = 999999;
-            lagComp->TolerateShootPointDistanceSqured = infinity;
-            lagComp->TolerateMuzzleDistanceSqured = infinity;
-            lagComp->TolerateBulletImpactOffsetDistSqured = infinity;
-            lagComp->TolerateOwnerAndBulletDist = infinity;
-            lagComp->TolerateBulletDirCheckDistance = infinity;
-            lagComp->TolerateBulletDirOffsetSquared = infinity;
-            lagComp->TolerateShootRange = infinity;
-            lagComp->TolerateHitDataDelayTime = infinity;
-            lagComp->TolerateHitDataDelayTimeShootCorner = infinity;
-            lagComp->TolerateFlyDis = infinity;
-            lagComp->VictimShootVerify.ClientMuzzleHeightMax = infinity;
-            lagComp->VictimShootVerify.ClientPureMuzzleHeightMax = infinity;
+            lc->TolerateMuzzleAndCharacterDisSquare = 999999;
+            lc->TolerateShootPointDistanceSqured = infinity;
+            lc->TolerateMuzzleDistanceSqured = infinity;
+            lc->TolerateBulletImpactOffsetDistSqured = infinity;
+            lc->TolerateOwnerAndBulletDist = infinity;
+            lc->TolerateBulletDirCheckDistance = infinity;
+            lc->TolerateBulletDirOffsetSquared = infinity;
+            lc->TolerateShootRange = infinity;
+            lc->TolerateHitDataDelayTime = infinity;
+            lc->TolerateHitDataDelayTimeShootCorner = infinity;
+            lc->TolerateFlyDis = infinity;
+            lc->VictimShootVerify.ClientMuzzleHeightMax = infinity;
+            lc->VictimShootVerify.ClientPureMuzzleHeightMax = infinity;
         }
 
         if (character->WeaponManagerComponent)
@@ -229,11 +229,15 @@ namespace Hacks
             }
         }
 
-        if (controller && controller->PlayerAntiCheatManager)
+        if (controller && controller->AntiCheatManagerComp)
         {
-            auto ac = controller->PlayerAntiCheatManager;
-            ac->ClientWeaponFastReload.PunishThresHold = 999999.0f;
-            ac->ClientWeaponFastReload.bShouldPunish = false;
+            auto ac = controller->AntiCheatManagerComp;
+            ac->BulletDirError.PunishThresHold = 999999;
+            ac->BulletDirError.bShouldPunish = false;
+            ac->VsShootAngleInVaild.PunishThresHold = 999999;
+            ac->VsShootAngleInVaild.bShouldPunish = false;
+            ac->ShooterHead2PosBlock.PunishThresHold = 999999;
+            ac->ShooterHead2PosBlock.bShouldPunish = false;
         }
     }
 }
