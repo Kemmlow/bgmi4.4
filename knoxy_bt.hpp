@@ -77,7 +77,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &otp)
         if (!a || a == (SDK::AActor *)c || isObjectInvalid(a)) continue;
         if (!a->IsA(SDK::ASTExtraPlayerCharacter::StaticClass())) continue;
         auto e = (SDK::ASTExtraPlayerCharacter *)a;
-        if (e->bDying || e->Health <= 0.0f || e->TeamID == c->TeamID) continue;
+        if (e->TeamID == c->TeamID) continue;
         float wd = c->GetDistanceTo(e) / 100.0f;
         if (wd > knoxy::BTRange) continue;
         bool v = false; SDK::FVector vbp(0, 0, 0);
@@ -92,7 +92,7 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &otp)
             float sd = SDK::FVector2D::Distance(sc, sp);
             if (sd < ms) { ms = sd; bf = e; bp = vbp; }
         }
-        float tw = isP ? (wd * 0.25f) : (wd * 0.85f);
+        float tw = isP ? (wd * 0.25f) : (wd * 0.95f);
         if (tw < mw) { mw = tw; bt = e; tp = vbp; }
     }
     if (bf) { otp = bp; return bf; }
@@ -106,6 +106,7 @@ namespace Hacks
     {
         if (!c) return;
         auto ct = (SDK::ASTExtraPlayerController*)g_PlayerController;
+        c->bEnableSecurityCheck = false; c->bEnableSecurity = false;
         if (c->LagCompensationComponent) {
             auto lc = c->LagCompensationComponent;
             lc->ShootCornerMaxDotValue = -1.0f; lc->GrayWeaponAndShootAngle = 180.0f;
@@ -127,6 +128,7 @@ namespace Hacks
         if (c->WeaponManagerComponent) {
             auto w = (SDK::ASTExtraShootWeapon *)c->WeaponManagerComponent->CurrentWeaponReplicated;
             if (w) {
+                w->bEnableAntiCheat = false;
                 if (w->ShootWeaponComponent) {
                     auto nc = (SDK::UNormalProjectileComponent *)w->ShootWeaponComponent;
                     nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
@@ -137,17 +139,12 @@ namespace Hacks
                     nc->VerifyConfig.bVerifyLauchTimeWithServer = false; nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
                     nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
                 }
-                if (w->AntiCheatComp) {
-                   uintptr_t ac = (uintptr_t)w->AntiCheatComp;
-                   *(bool*)(ac + 0x8AC) = false;
-                }
-                if (w->CachedBulletHitInfoUploadComponent) {
-                    uintptr_t u = (uintptr_t)w->CachedBulletHitInfoUploadComponent;
-                    *(bool*)(u + 0x23F0) = false;
-                }
+                if (w->AntiCheatComp) { uintptr_t ac = (uintptr_t)w->AntiCheatComp; *(bool*)(ac + 0x8AC) = false; }
+                if (w->CachedBulletHitInfoUploadComponent) { uintptr_t u = (uintptr_t)w->CachedBulletHitInfoUploadComponent; *(bool*)(u + 0x23F0) = false; }
             }
         }
         if (ct) {
+            ct->bEnableSecurityCheck = false; ct->bEnableSecurity = false;
             if (ct->AntiCheatManagerComp) {
                 auto ac = ct->AntiCheatManagerComp;
                 ac->BulletDirError.PunishThresHold = 999999; ac->BulletDirError.bShouldPunish = false;
@@ -178,28 +175,4 @@ inline void xShootBulletInner(uintptr_t W, SDK::FVector SL, SDK::FRotator SR, in
         }
     }
     return ShootBulletInner_Orig(W, SL, SR, SID);
-}
-
-inline void xhit_Fix(bool x, uintptr_t lp)
-{
-    if (x) {
-        auto c = (SDK::ASTExtraBaseCharacter *)lp;
-        if (c && c->Controller) {
-            auto ct = (SDK::ASTExtraPlayerController *)c->Controller;
-            if (ct && ct->MyHUD) {
-                auto h = (SDK::ASurviveHUD *)ct->MyHUD;
-                auto &hp = h->HitPerform;
-                static float hue = 0.0f; hue += 0.015f;
-                if (hue > 6.28f) hue = 0.0f;
-                SDK::FLinearColor r = {(sin(hue) + 1.0f) / 2.0f, (sin(hue + 2.09f) + 1.0f) / 2.0f, (sin(hue + 4.18f) + 1.0f) / 2.0f, 1.0f};
-                hp.HeadExtraScale = 27.0f; hp.AddSpreadScale = 15.75f; hp.DefaultSpread = 180.0f;
-                hp.HitBodyDrawColor = hp.HitHeadDrawColor = hp.HitToDyingDrawColor = hp.HitToDeathDrawColor = r;
-                hp.DefaultAlpha = 1.0f; hp.AlphaDecreaseSpeed = 0.0f;
-                for (int i = 0; i < hp.IconList.Num(); i++) {
-                    auto &ic = hp.IconList[i];
-                    ic.Scale = 4.0f; ic.Alpha = 1.0f; ic.BlendInOutRatePerSec = 0.0f;
-                }
-            }
-        }
-    }
 }
