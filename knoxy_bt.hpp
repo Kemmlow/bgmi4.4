@@ -23,78 +23,84 @@ inline const char *TargetBonesFallback[] = {
 
 struct PredictionEngine
 {
-    static SDK::FVector Predict(SDK::ASTExtraBaseCharacter* local, SDK::ASTExtraPlayerCharacter* target, SDK::FVector targetPos)
+    static SDK::FVector Predict(SDK::ASTExtraBaseCharacter* localPlayer, SDK::ASTExtraPlayerCharacter* targetCharacter, SDK::FVector targetBonePos)
     {
-        SDK::FVector tVel = target->GetVelocity();
-        SDK::FVector lVel = local->GetVelocity();
-        SDK::FVector rVel = tVel - lVel;
+        SDK::FVector targetVelocity = targetCharacter->GetVelocity();
+        SDK::FVector localVelocity = localPlayer->GetVelocity();
+        SDK::FVector relativeVelocity = targetVelocity - localVelocity;
 
-        float dist = local->GetDistanceTo(target);
-        float tof = dist / knoxy::CustomBulletSpeed;
+        float distance = localPlayer->GetDistanceTo(targetCharacter);
+        float timeOfFlight = distance / knoxy::CustomBulletSpeed;
 
-        uint8_t ps = (uint8_t)target->ParachuteState;
-        bool isP = (ps == 1 || ps == 2);
+        uint8_t parachuteState = (uint8_t)targetCharacter->ParachuteState;
+        bool isParachuting = (parachuteState == 1 || parachuteState == 2);
 
-        float td = 0.033f;
-        if (isP) {
-            td = 0.045f + (dist / 100000.0f);
+        float latencyDelay = 0.033f;
+        if (isParachuting) {
+            latencyDelay = 0.048f + (distance / 100000.0f);
         } else {
-            float speedFactor = tVel.Size() / 1000.0f;
-            td = 0.030f + (speedFactor * 0.015f) + (dist / 150000.0f);
+            float speedMagnitude = targetVelocity.Size();
+            latencyDelay = 0.030f + (speedMagnitude / 1000.0f * 0.015f) + (distance / 150000.0f);
         }
 
-        SDK::FVector pPos = targetPos + (rVel * (tof + td));
+        float totalExtrapolationTime = timeOfFlight + latencyDelay;
+        SDK::FVector finalPredictedPos = targetBonePos + (relativeVelocity * totalExtrapolationTime);
 
-        if (isP) {
-            pPos.Z += (tVel.Z * 0.065f);
-            float dropComp = 0.5f * 981.0f * (tof * tof);
-            pPos.Z += dropComp;
+        if (isParachuting) {
+            finalPredictedPos.Z += (targetVelocity.Z * 0.065f);
+            float gravityCompensation = 0.5f * 981.0f * (timeOfFlight * timeOfFlight);
+            finalPredictedPos.Z += gravityCompensation;
         }
 
-        return pPos;
+        return finalPredictedPos;
     }
 };
 
 struct RotatorEngine
 {
-    static SDK::FRotator Solve(SDK::FVector start, SDK::FVector target)
+    static SDK::FRotator Solve(SDK::FVector muzzleLocation, SDK::FVector targetLocation)
     {
-        SDK::FVector dir = target - start;
-        float dist3D = std::sqrt(dir.X * dir.X + dir.Y * dir.Y + dir.Z * dir.Z);
+        SDK::FVector aimDirection = targetLocation - muzzleLocation;
+        float distance3D = std::sqrt(aimDirection.X * aimDirection.X + aimDirection.Y * aimDirection.Y + aimDirection.Z * aimDirection.Z);
 
-        SDK::FRotator rot;
-        rot.Pitch = std::asin(dir.Z / dist3D) * (180.0f / 3.14159265358979323846f);
-        rot.Yaw = std::atan2(dir.Y, dir.X) * (180.0f / 3.14159265358979323846f);
-        rot.Roll = 0;
+        if (distance3D < 0.1f) return SDK::FRotator(0, 0, 0);
 
-        rot.Pitch = std::clamp(rot.Pitch, -89.0f, 89.0f);
-        while (rot.Yaw > 180.0f) rot.Yaw -= 360.0f;
-        while (rot.Yaw < -180.0f) rot.Yaw += 360.0f;
+        SDK::FRotator finalRotation;
+        float pitchRatio = aimDirection.Z / distance3D;
+        pitchRatio = std::clamp(pitchRatio, -1.0f, 1.0f);
 
-        return rot;
+        finalRotation.Pitch = std::asin(pitchRatio) * (180.0f / 3.14159265358979323846f);
+        finalRotation.Yaw = std::atan2(aimDirection.Y, aimDirection.X) * (180.0f / 3.14159265358979323846f);
+        finalRotation.Roll = 0;
+
+        finalRotation.Pitch = std::clamp(finalRotation.Pitch, -89.0f, 89.0f);
+        while (finalRotation.Yaw > 180.0f) finalRotation.Yaw -= 360.0f;
+        while (finalRotation.Yaw < -180.0f) finalRotation.Yaw += 360.0f;
+
+        return finalRotation;
     }
 };
 
 inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTargetPos)
 {
     auto character = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
-    auto controller = (SDK::ASTExtraPlayerController *)g_PlayerController;
+    auto controller = (SDK::ASTExtraPlayerController *)g_LocalController;
 
     if (!character || !controller || !controller->PlayerCameraManager)
         return nullptr;
 
-    SDK::ASTExtraPlayerCharacter *bf = nullptr;
-    SDK::ASTExtraPlayerCharacter *bt = nullptr;
+    SDK::ASTExtraPlayerCharacter *bestFOVTarget = nullptr;
+    SDK::ASTExtraPlayerCharacter *best360Target = nullptr;
 
-    float ms = knoxy::MaxFOVRadius;
-    float mw = std::numeric_limits<float>::max();
+    float minScreenDistance = knoxy::MaxFOVRadius;
+    float minWeightedDistance = std::numeric_limits<float>::max();
 
-    SDK::FVector bp(0, 0, 0);
-    SDK::FVector tp(0, 0, 0);
-    SDK::FVector2D ch(screenWidth / 2.0f, screenHeight / 2.0f);
+    SDK::FVector bestFOVPosition(0, 0, 0);
+    SDK::FVector best360Position(0, 0, 0);
+    SDK::FVector2D screenCenter(screenWidth / 2.0f, screenHeight / 2.0f);
 
     auto actors = getActors();
-    SDK::FVector vp = controller->PlayerCameraManager->GetCameraLocation();
+    SDK::FVector cameraLocation = controller->PlayerCameraManager->GetCameraLocation();
 
     for (auto actor : actors)
     {
@@ -107,53 +113,53 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &outTarget
         if (enemy->bDying || enemy->Health <= 0.0f || enemy->TeamID == character->TeamID)
             continue;
 
-        float d = character->GetDistanceTo(enemy) / 100.0f;
-        if (d > knoxy::BTRange)
+        float worldDistance = character->GetDistanceTo(enemy) / 100.0f;
+        if (worldDistance > knoxy::BTRange)
             continue;
 
-        bool v = false;
-        SDK::FVector fp(0, 0, 0);
+        bool isVisible = false;
+        SDK::FVector visibleBonePos(0, 0, 0);
 
-        for (const char *bn : TargetBonesFallback)
+        for (const char *boneName : TargetBonesFallback)
         {
-            SDK::FVector b = enemy->GetBonePos(bn, {0, 0, 0});
-            if (controller->LineOfSightTo(enemy, vp, false))
+            SDK::FVector bonePos = enemy->GetBonePos(boneName, {0, 0, 0});
+            if (controller->LineOfSightTo(enemy, cameraLocation, false))
             {
-                fp = b;
-                v = true;
+                visibleBonePos = bonePos;
+                isVisible = true;
                 break;
             }
         }
 
-        if (!v)
+        if (!isVisible)
             continue;
 
-        uint8_t ps = (uint8_t)enemy->ParachuteState;
-        bool isP = (ps == 1 || ps == 2);
+        uint8_t parachuteState = (uint8_t)enemy->ParachuteState;
+        bool isParachuting = (parachuteState == 1 || parachuteState == 2);
 
-        SDK::FVector2D s;
-        if (controller->ProjectWorldLocationToScreen(fp, true, &s))
+        SDK::FVector2D screenPos;
+        if (controller->ProjectWorldLocationToScreen(visibleBonePos, true, &screenPos))
         {
-            float sd = SDK::FVector2D::Distance(ch, s);
-            if (sd < ms)
+            float screenDist = SDK::FVector2D::Distance(screenCenter, screenPos);
+            if (screenDist < minScreenDistance)
             {
-                ms = sd;
-                bf = enemy;
-                bp = fp;
+                minScreenDistance = screenDist;
+                bestFOVTarget = enemy;
+                bestFOVPosition = visibleBonePos;
             }
         }
 
-        float tw = isP ? (d * 0.35f) : d;
-        if (tw < mw)
+        float trackingWeight = isParachuting ? (worldDistance * 0.35f) : worldDistance;
+        if (trackingWeight < minWeightedDistance)
         {
-            mw = tw;
-            bt = enemy;
-            tp = fp;
+            minWeightedDistance = trackingWeight;
+            best360Target = enemy;
+            best360Position = visibleBonePos;
         }
     }
 
-    if (bf) { outTargetPos = bp; return bf; }
-    if (knoxy::Hyper360 && bt) { outTargetPos = tp; return bt; }
+    if (bestFOVTarget) { outTargetPos = bestFOVPosition; return bestFOVTarget; }
+    if (knoxy::Hyper360 && best360Target) { outTargetPos = best360Position; return best360Target; }
 
     return nullptr;
 }
@@ -162,36 +168,47 @@ namespace Hacks
 {
     inline void ApplyNuclearTrueDamage(SDK::ASTExtraBaseCharacter *character)
     {
-        if (!character || !character->LagCompensationComponent)
-            return;
+        if (!character) return;
 
-        auto lc = character->LagCompensationComponent;
+        auto controller = (SDK::ASTExtraPlayerController*)g_LocalController;
 
-        lc->ShootCornerMaxDotValue = -1.0f;
-        lc->GrayWeaponAndShootAngle = 180.0f;
+        if (character->LagCompensationComponent)
+        {
+            auto lc = character->LagCompensationComponent;
+            lc->ShootCornerMaxDotValue = -1.0f;
+            lc->GrayWeaponAndShootAngle = 180.0f;
+            lc->bVerifyGunPos = false;
+            lc->bVerifyClientMuzzle = false;
+            lc->bVerifyShootRange = false;
+            lc->bVerifyShootDir = false;
+            lc->bVerifyMuzzleImpactDir = false;
+            lc->bVerifyMuzzleImpactDirIgnoreCrawl = false;
+            lc->bVerifyShootPosInHistory = false;
+            lc->bVerifyMuzzleLocus = false;
+            lc->bVerifyShootPoint = false;
+            lc->bVerifyBulletImpactOffset = false;
+            lc->bVerifyClientHitAndBullet = false;
+            lc->bVerifyCharacterImpactOffset = false;
+            lc->bVerifyInParachuteShootPoint = false;
+            lc->bVerifyShooterHead2PosIsBlock = false;
+            lc->bVerifyClientHitCheck = false;
+            lc->bVerifyShootPointPassWall = false;
 
-        lc->bVerifyClientMuzzle = false;
-        lc->bVerifyShootRange = false;
-        lc->bVerifyShootDir = false;
-        lc->bVerifyMuzzleImpactDir = false;
-        lc->bVerifyMuzzleLocus = false;
-        lc->bVerifyShootPoint = false;
-        lc->bVerifyBulletImpactOffset = false;
-        lc->bVerifyClientHitAndBullet = false;
-        lc->bVerifyCharacterImpactOffset = false;
-        lc->bVerifyClientHitCheck = false;
-
-        float f = 999999.0f;
-        lc->TolerateMuzzleAndCharacterDisSquare = 999999;
-        lc->TolerateShootPointDistanceSqured = f;
-        lc->TolerateMuzzleDistanceSqured = f;
-        lc->TolerateBulletImpactOffsetDistSqured = f;
-        lc->TolerateOwnerAndBulletDist = f;
-        lc->TolerateBulletDirCheckDistance = f;
-        lc->TolerateBulletDirOffsetSquared = f;
-        lc->TolerateShootRange = f;
-        lc->VictimShootVerify.ClientMuzzleHeightMax = f;
-        lc->VictimShootVerify.ClientPureMuzzleHeightMax = f;
+            float f = 999999.0f;
+            lc->TolerateMuzzleAndCharacterDisSquare = 999999;
+            lc->TolerateShootPointDistanceSqured = f;
+            lc->TolerateMuzzleDistanceSqured = f;
+            lc->TolerateBulletImpactOffsetDistSqured = f;
+            lc->TolerateOwnerAndBulletDist = f;
+            lc->TolerateBulletDirCheckDistance = f;
+            lc->TolerateBulletDirOffsetSquared = f;
+            lc->TolerateShootRange = f;
+            lc->TolerateHitDataDelayTime = f;
+            lc->TolerateHitDataDelayTimeShootCorner = f;
+            lc->TolerateFlyDis = f;
+            lc->VictimShootVerify.ClientMuzzleHeightMax = f;
+            lc->VictimShootVerify.ClientPureMuzzleHeightMax = f;
+        }
 
         if (character->WeaponManagerComponent)
         {
@@ -199,14 +216,25 @@ namespace Hacks
             if (w && w->ShootWeaponComponent)
             {
                 auto nc = (SDK::UNormalProjectileComponent *)w->ShootWeaponComponent;
-                nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = f;
-                nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = f;
+                nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
+                nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
                 nc->VerifyConfig.bVerifyBlockVerify = false;
-                nc->VerifyConfig.bVerifyShootDir2D = false;
-                nc->VerifyConfig.bVerifyClientFlySpeed = false;
                 nc->VerifyConfig.bVerifyBulletScDiff = false;
+                nc->VerifyConfig.bVerifyShootDir2D = false;
                 nc->VerifyConfig.bVerifyImpactPointDiff = false;
+                nc->VerifyConfig.bVerifyWeaponFireInfoTimeForcePunish = false;
+                nc->VerifyConfig.bVerifyClientFlySpeed = false;
+                nc->VerifyConfig.bVerifyLauchTimeWithServer = false;
+                nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
+                nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
             }
+        }
+
+        if (controller && controller->PlayerAntiCheatManager)
+        {
+            auto ac = controller->PlayerAntiCheatManager;
+            ac->ClientWeaponFastReload.PunishThresHold = 999999.0f;
+            ac->ClientWeaponFastReload.bShouldPunish = false;
         }
     }
 }
