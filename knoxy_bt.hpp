@@ -13,54 +13,11 @@ namespace knoxy
     inline float BTRange = 600.0f;
     inline float MaxFOVRadius = 350.0f;
     inline bool TrueDamageFix = true;
-    inline float CustomBulletSpeed = 500000.0f;
 }
 
 inline const char *TargetBonesFallback[] = {
     "Head", "neck_01", "upperarm_r", "upperarm_l", "lowerarm_r", "lowerarm_l",
     "spine_03", "spine_02", "spine_01", "pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r"};
-
-struct PredictionEngine
-{
-    static SDK::FVector Predict(SDK::ASTExtraBaseCharacter* lp, SDK::ASTExtraPlayerCharacter* tc, SDK::FVector bp)
-    {
-        SDK::FVector tv = tc->GetVelocity();
-        SDK::FVector lv = lp->GetVelocity();
-        SDK::FVector rv = tv - lv;
-        float d = lp->GetDistanceTo(tc);
-        float tof = d / knoxy::CustomBulletSpeed;
-        uint8_t ps = (uint8_t)tc->ParachuteState;
-        bool isP = (ps == 1 || ps == 2);
-        float td = 0.033f;
-        if (isP) td = 0.055f + (d / 80000.0f);
-        else td = 0.033f + (tv.Size() / 1000.0f * 0.020f) + (d / 120000.0f);
-        SDK::FVector pp = bp + (rv * (tof + td));
-        if (isP) {
-            pp.Z += (tv.Z * 0.085f);
-            pp.Z += (0.5f * 981.0f * (tof * tof));
-        }
-        return pp;
-    }
-};
-
-struct RotatorEngine
-{
-    static SDK::FRotator Solve(SDK::FVector ml, SDK::FVector tl)
-    {
-        SDK::FVector ad = tl - ml;
-        float d3 = std::sqrt(ad.X * ad.X + ad.Y * ad.Y + ad.Z * ad.Z);
-        if (d3 < 0.1f) return {0, 0, 0};
-        SDK::FRotator fr;
-        float pr = std::clamp(ad.Z / d3, -1.0f, 1.0f);
-        fr.Pitch = std::asin(pr) * (180.0f / 3.14159265358979323846f);
-        fr.Yaw = std::atan2(ad.Y, ad.X) * (180.0f / 3.14159265358979323846f);
-        fr.Roll = 0;
-        fr.Pitch = std::clamp(fr.Pitch, -89.0f, 89.0f);
-        while (fr.Yaw > 180.0f) fr.Yaw -= 360.0f;
-        while (fr.Yaw < -180.0f) fr.Yaw += 360.0f;
-        return fr;
-    }
-};
 
 inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &otp)
 {
@@ -119,10 +76,6 @@ namespace Hacks
     {
         if (!c) return;
         auto ct = (SDK::ASTExtraPlayerController*)g_PlayerController;
-
-        *(bool*)((uintptr_t)c + 0x01D4) = false; // bEnableSecurityCheck
-        *(bool*)((uintptr_t)c + 0x50A0) = false; // bEnableSecurity
-
         if (c->LagCompensationComponent) {
             auto lc = c->LagCompensationComponent;
             lc->ShootCornerMaxDotValue = -1.0f; lc->GrayWeaponAndShootAngle = 180.0f;
@@ -143,34 +96,24 @@ namespace Hacks
         }
         if (c->WeaponManagerComponent) {
             auto w = (SDK::ASTExtraShootWeapon *)c->WeaponManagerComponent->CurrentWeaponReplicated;
-            if (w) {
-                *(bool*)((uintptr_t)w + 0x1638) = false; // bEnableAntiCheat
-                if (w->ShootWeaponComponent) {
-                    auto nc = (SDK::UNormalProjectileComponent *)w->ShootWeaponComponent;
-                    nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
-                    nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
-                    nc->VerifyConfig.bVerifyBlockVerify = false; nc->VerifyConfig.bVerifyBulletScDiff = false;
-                    nc->VerifyConfig.bVerifyShootDir2D = false; nc->VerifyConfig.bVerifyImpactPointDiff = false;
-                    nc->VerifyConfig.bVerifyWeaponFireInfoTimeForcePunish = false; nc->VerifyConfig.bVerifyClientFlySpeed = false;
-                    nc->VerifyConfig.bVerifyLauchTimeWithServer = false; nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
-                    nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
-                }
-                if (w->AntiCheatComp) { *(bool*)((uintptr_t)w->AntiCheatComp + 0x8AC) = false; }
-                if (w->CachedBulletHitInfoUploadComponent) { *(bool*)((uintptr_t)w->CachedBulletHitInfoUploadComponent + 0x23F0) = false; }
+            if (w && w->ShootWeaponComponent) {
+                auto nc = (SDK::UNormalProjectileComponent *)w->ShootWeaponComponent;
+                nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
+                nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
+                nc->VerifyConfig.bVerifyBlockVerify = false; nc->VerifyConfig.bVerifyBulletScDiff = false;
+                nc->VerifyConfig.bVerifyShootDir2D = false; nc->VerifyConfig.bVerifyImpactPointDiff = false;
+                nc->VerifyConfig.bVerifyWeaponFireInfoTimeForcePunish = false; nc->VerifyConfig.bVerifyClientFlySpeed = false;
+                nc->VerifyConfig.bVerifyLauchTimeWithServer = false; nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
+                nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
             }
         }
-        if (ct) {
-            *(bool*)((uintptr_t)ct + 0x01D4) = false; // bEnableSecurityCheck
-            *(bool*)((uintptr_t)ct + 0x50A0) = false; // bEnableSecurity
-            if (ct->AntiCheatManagerComp) {
-                auto ac = ct->AntiCheatManagerComp;
-                ac->BulletDirError.PunishThresHold = 999999; ac->BulletDirError.bShouldPunish = false;
-                ac->VsShootAngleInVaild.PunishThresHold = 999999; ac->VsShootAngleInVaild.bShouldPunish = false;
-                ac->ShooterHead2PosBlock.PunishThresHold = 999999; ac->ShooterHead2PosBlock.bShouldPunish = false;
-                ac->VsMuzzleAndTailPassWall.bShouldPunish = false; ac->VsMuzzleAndImpactPassWall.bShouldPunish = false;
-                ac->ClientTimeSpeedAcc.bShouldPunish = false; ac->bOpenDetailDataCollect = false;
-                *(bool*)((uintptr_t)ac + 0x23F0) = false; // bShouldReportAntiCheat
-            }
+        if (ct && ct->AntiCheatManagerComp) {
+            auto ac = ct->AntiCheatManagerComp;
+            ac->BulletDirError.PunishThresHold = 999999; ac->BulletDirError.bShouldPunish = false;
+            ac->VsShootAngleInVaild.PunishThresHold = 999999; ac->VsShootAngleInVaild.bShouldPunish = false;
+            ac->ShooterHead2PosBlock.PunishThresHold = 999999; ac->ShooterHead2PosBlock.bShouldPunish = false;
+            ac->VsMuzzleAndTailPassWall.bShouldPunish = false; ac->VsMuzzleAndImpactPassWall.bShouldPunish = false;
+            ac->ClientTimeSpeedAcc.bShouldPunish = false; ac->bOpenDetailDataCollect = false;
         }
     }
 }
@@ -185,7 +128,22 @@ inline void xShootBulletInner(uintptr_t W, SDK::FVector SL, SDK::FRotator SR, in
     if (knoxy::BulletTrack) {
         SDK::FVector tp(0, 0, 0);
         SDK::ASTExtraPlayerCharacter *t = GetKnoxyHyperTarget(tp);
-        if (t) return ShootBulletInner_Orig(W, tp, SR, SID);
+        if (t) {
+            // God-Level Rotator Engine: Raw Trig for absolute gyro/camera stability
+            SDK::FVector dir = tp - SL;
+            float d3 = std::sqrt(dir.X * dir.X + dir.Y * dir.Y + dir.Z * dir.Z);
+            if (d3 > 0.1f) {
+                SDK::FRotator hr;
+                float pr = std::clamp(dir.Z / d3, -1.0f, 1.0f);
+                hr.Pitch = std::asin(pr) * (180.0f / 3.14159265358979323846f);
+                hr.Yaw = std::atan2(dir.Y, dir.X) * (180.0f / 3.14159265358979323846f);
+                hr.Roll = 0;
+                hr.Pitch = std::clamp(hr.Pitch, -89.0f, 89.0f);
+                while (hr.Yaw > 180.0f) hr.Yaw -= 360.0f;
+                while (hr.Yaw < -180.0f) hr.Yaw += 360.0f;
+                return ShootBulletInner_Orig(W, SL, hr, SID);
+            }
+        }
     }
     return ShootBulletInner_Orig(W, SL, SR, SID);
 }

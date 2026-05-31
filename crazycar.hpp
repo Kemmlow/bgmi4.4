@@ -9,39 +9,39 @@ inline void ApplyCrazyCar(uintptr_t localPlayer, bool crazycar)
         auto character = (SDK::ASTExtraBaseCharacter *)localPlayer;
         if (crazycar && character && !isObjectInvalid(character))
         {
-            // Only apply when LO is the Driver (Index 0) and actually in the vehicle
-            if (character->VehicleSeatIdx == 0 && character->bIsAttachedToVehicle) // Offset 0x2E18, 0x2E20
+            // Smart State Handling: Only work when we are the Driver (SeatIdx 0)
+            if (character->VehicleSeatIdx == 0 && character->bIsAttachedToVehicle)
             {
-                auto vehicle = character->CurrentVehicle; // Offset 0x1A60
+                auto vehicle = character->CurrentVehicle;
                 if (vehicle && !isObjectInvalid(vehicle))
                 {
-                    // 1. God-Level Speed Injection
-                    auto movement = (SDK::USTExtraVehicleMovementComponent4W*)vehicle->VehicleMovement; // Offset 0x1E10
+                    // 1. Hyper-Speed Injection via Direct Member Access
+                    auto movement = (SDK::USTExtraVehicleMovementComponent4W*)vehicle->VehicleMovement;
                     if (movement && !isObjectInvalid(movement))
                     {
-                        // Overwrite all speed ceilings to allow 2x+ velocity
-                        movement->MaxSpeed = 99999.0f;        // Offset 0x01BC
-                        movement->InitialMaxSpeed = 99999.0f; // Offset 0x0854
-                        movement->SpecialStateMaxSpeed = 99999.0f; // Offset 0x0C44
+                        // Double the speed by maximizing all speed limits directly
+                        movement->MaxSpeed = 99999.0f;
+                        movement->InitialMaxSpeed = 99999.0f;
+                        movement->SpecialStateMaxSpeed = 99999.0f;
                     }
 
-                    // 2. Gag Vehicle Verification
-                    auto sync = vehicle->VehicleSyncComponent; // Offset 0x0C10
+                    // 2. Disable Verification Checks directly
+                    auto sync = vehicle->VehicleSyncComponent;
                     if (sync && !isObjectInvalid(sync))
                     {
-                        sync->bVehicleNeedFlyVelCheck = false; // Offset 0x02B8
+                        sync->bVehicleNeedFlyVelCheck = false;
                     }
 
-                    // 3. Absolute Anti-Cheat Neutralization
-                    uintptr_t ac = *(uintptr_t*)((uintptr_t)vehicle + 0x0C90); // VehicleAntiCheat offset
-                    if (ac)
+                    // 3. Neutralize Protection via SDK Component Access
+                    auto protection = (SDK::UWheeledVehicleProtectionComponent*)vehicle->VehicleAntiCheat;
+                    if (protection && !isObjectInvalid(protection))
                     {
-                        *(bool*)(ac + 0x0270) = false; // bEnableProtection
-                        *(bool*)(ac + 0x0490) = false; // bEnablePreventFly
+                        protection->bEnableProtection = false;
+                        protection->bEnablePreventFly = false;
                     }
 
-                    // 4. Force Rep-Physics Sleep to prevent rubberbanding
-                    *(bool*)((uintptr_t)vehicle + 0x1B41) = true; // bRepPhysicsSleep
+                    // 4. Smooth State Sync
+                    vehicle->bRepPhysicsSleep = true;
                 }
             }
         }
