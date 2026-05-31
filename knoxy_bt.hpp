@@ -37,22 +37,22 @@ inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &otp)
         if (!a->IsA(SDK::ASTExtraPlayerCharacter::StaticClass())) continue;
 
         auto e = (SDK::ASTExtraPlayerCharacter *)a;
-
-        // Filter: Only target living, non-knocked enemies
         if (e->bDying || e->Health <= 0.0f || e->TeamID == c->TeamID) continue;
 
         float wd = c->GetDistanceTo(e) / 100.0f;
         if (wd > knoxy::BTRange) continue;
 
-        // Optimization: Perform single expensive actor-level visibility trace outside bone loop
         if (!ct->LineOfSightTo(e, cl, false)) continue;
 
         SDK::FVector vbp(0, 0, 0);
         bool foundBone = false;
         for (const char *bn : TargetBonesFallback) {
-            vbp = e->GetBonePos(bn, {0, 0, 0});
-            foundBone = true;
-            break; // First bone in fallback is prioritized
+            SDK::FVector b = e->GetBonePos(bn, {0, 0, 0});
+            if (b.X != 0.0f || b.Y != 0.0f || b.Z != 0.0f) {
+                vbp = b;
+                foundBone = true;
+                break;
+            }
         }
         if (!foundBone) continue;
 
@@ -89,8 +89,8 @@ namespace Hacks
             float inf = 999999.0f;
             lc->TolerateMuzzleAndCharacterDisSquare = 999999; lc->TolerateShootPointDistanceSqured = inf;
             lc->TolerateMuzzleDistanceSqured = inf; lc->TolerateBulletImpactOffsetDistSqured = inf;
-            lc->TolerateOwnerAndBulletDist = inf; lc->TolerateOwnerAndBulletDist = inf;
-            lc->TolerateBulletDirCheckDistance = inf; lc->TolerateBulletDirOffsetSquared = inf; lc->TolerateShootRange = inf;
+            lc->TolerateOwnerAndBulletDist = inf; lc->TolerateBulletDirCheckDistance = inf;
+            lc->TolerateBulletDirOffsetSquared = inf; lc->TolerateShootRange = inf;
             lc->TolerateHitDataDelayTime = inf; lc->TolerateHitDataDelayTimeShootCorner = inf;
             lc->TolerateFlyDis = inf; lc->VictimShootVerify.ClientMuzzleHeightMax = inf;
             lc->VictimShootVerify.ClientPureMuzzleHeightMax = inf;
