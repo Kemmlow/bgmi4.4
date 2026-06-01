@@ -2,7 +2,7 @@
 
 #include "SDK.hpp"
 
-inline void ApplyCrazyCar(uintptr_t localPlayer, bool crazycar, bool instantbrake)
+inline void ApplyCrazyCar(uintptr_t localPlayer, bool crazycar, bool instantbrake, bool carfly)
 {
     if (localPlayer)
     {
@@ -15,6 +15,9 @@ inline void ApplyCrazyCar(uintptr_t localPlayer, bool crazycar, bool instantbrak
                 auto vehicle = character->CurrentVehicle;
                 if (vehicle && !isObjectInvalid(vehicle))
                 {
+                    auto root = vehicle->RootComponent;
+                    auto prim = (SDK::UPrimitiveComponent*)root;
+
                     // 1. Crazy Car: Hyper-Speed Logic
                     if (crazycar)
                     {
@@ -43,32 +46,50 @@ inline void ApplyCrazyCar(uintptr_t localPlayer, bool crazycar, bool instantbrak
                     // 2. God-Level Instant Brake
                     if (instantbrake)
                     {
-                        // Direct member velocity zeroing (Works for all physics-based vehicles)
-                        // This bypasses standard deceleration curves for an immediate stop
                         SDK::FVector zero(0, 0, 0);
-
-                        // Set Actor Level Velocity
                         vehicle->K2_SetActorLocation(vehicle->K2_GetActorLocation(), false, nullptr, false);
 
-                        // Stop all component-level physics movement
-                        auto root = vehicle->RootComponent;
-                        if (root && !isObjectInvalid(root))
+                        if (prim && !isObjectInvalid(prim))
                         {
-                            // Some vehicles use SceneComponent/PrimitiveComponent for physics
-                            auto prim = (SDK::UPrimitiveComponent*)root;
-                            if (prim)
-                            {
-                                prim->SetPhysicsLinearVelocity(zero, false, SDK::FName("None"));
-                                prim->SetPhysicsAngularVelocity(zero, false, SDK::FName("None"));
-                            }
+                            prim->SetPhysicsLinearVelocity(zero, false, SDK::FName("None"));
+                            prim->SetPhysicsAngularVelocity(zero, false, SDK::FName("None"));
                         }
 
-                        // Stop movement component cycles
                         auto movement = vehicle->VehicleMovement;
                         if (movement && !isObjectInvalid(movement))
                         {
                             movement->StopMovementImmediately();
                         }
+                    }
+
+                    // 3. God-Level CarFly: Ascend 1m/s and Defy Gravity
+                    if (carfly)
+                    {
+                        if (prim && !isObjectInvalid(prim))
+                        {
+                            // Ascend: 100.0f cm/s = 1m/s
+                            // Preserve current XY momentum but force Z ascend
+                            SDK::FVector currentVel = prim->GetPhysicsLinearVelocity(SDK::FName("None"));
+                            SDK::FVector flyVel(currentVel.X, currentVel.Y, 100.0f);
+
+                            // Force Injection
+                            prim->SetPhysicsLinearVelocity(flyVel, false, SDK::FName("None"));
+
+                            // Defy Gravity
+                            prim->SetEnableGravity(false);
+
+                            // Disable standard server-side velocity verification for flying
+                            auto sync = vehicle->VehicleSyncComponent;
+                            if (sync && !isObjectInvalid(sync))
+                            {
+                                sync->bVehicleNeedFlyVelCheck = false;
+                            }
+                        }
+                    }
+                    else if (prim && !isObjectInvalid(prim))
+                    {
+                        // Restore gravity if CarFly is disabled
+                        prim->SetEnableGravity(true);
                     }
                 }
             }
