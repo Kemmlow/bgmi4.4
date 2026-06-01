@@ -1,154 +1,138 @@
+// Credits : @knoxy_dev
 #pragma once
 
 #include "SDK.hpp"
 #include <limits>
 #include <algorithm>
-#include <vector>
-#include <cmath>
 
-namespace knoxy
-{
-    inline bool Hyper360 = true;
+namespace knoxy {
     inline bool BulletTrack = true;
     inline float BTRange = 600.0f;
-    inline float MaxFOVRadius = 350.0f;
     inline bool TrueDamageFix = true;
+    inline bool SkyShoot = true;
 }
 
-inline const char *TargetBonesFallback[] = {
-    "Head", "neck_01", "upperarm_r", "upperarm_l", "lowerarm_r", "lowerarm_l",
-    "spine_03", "spine_02", "spine_01", "pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r"};
+inline const char* TargetBones[] = {"Head", "neck_01", "upperarm_r", "upperarm_l", "spine_03", "spine_01", "pelvis", "thigh_l", "thigh_r"};
 
-inline SDK::ASTExtraPlayerCharacter *GetKnoxyHyperTarget(SDK::FVector &otp)
-{
-    auto c = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
-    auto ct = (SDK::ASTExtraPlayerController *)g_PlayerController;
-    if (!c || !ct || !c->WeaponManagerComponent) return nullptr;
+inline SDK::ASTExtraPlayerCharacter* GetKnoxyHyperTarget(SDK::FVector& outTargetPos) {
+    SDK::ASTExtraPlayerCharacter* bestTarget = nullptr;
+    float minCrosshairDist = std::numeric_limits<float>::max();
 
-    auto w = (SDK::ASTExtraShootWeapon *)c->WeaponManagerComponent->CurrentWeaponReplicated;
-    if (!w) return nullptr;
+    auto character = (SDK::ASTExtraBaseCharacter*)g_LocalPlayer;
+    auto controller = (SDK::ASTExtraPlayerController*)g_PlayerController;
+    if (!character || !controller || SDK::isObjectInvalid(character)) return nullptr;
 
-    SDK::FVector ml = w->GetMuzzleTransform().Translation;
-    SDK::ASTExtraPlayerCharacter *bf = nullptr, *bt = nullptr;
-    float ms = knoxy::MaxFOVRadius, mw = std::numeric_limits<float>::max();
-    SDK::FVector bp(0, 0, 0), tp(0, 0, 0);
-    SDK::FVector2D sc(screenWidth / 2.0f, screenHeight / 2.0f);
-    auto as = getActors();
+    auto actors = getActors();
+    SDK::FVector2D crosshair(screenWidth / 2.0f, screenHeight / 2.0f);
 
-    for (auto a : as) {
-        if (!a || a == (SDK::AActor *)c || isObjectInvalid(a)) continue;
-        if (!a->IsA(SDK::ASTExtraPlayerCharacter::StaticClass())) continue;
+    for (auto actor : actors) {
+        if (!actor || actor == (SDK::AActor*)character || SDK::isObjectInvalid(actor)) continue;
+        if (!actor->IsA(SDK::ASTExtraPlayerCharacter::StaticClass())) continue;
 
-        auto e = (SDK::ASTExtraPlayerCharacter *)a;
-        if (e->bDying || e->Health <= 0.0f || e->TeamID == c->TeamID) continue;
+        auto enemy = (SDK::ASTExtraPlayerCharacter*)actor;
+        if (enemy->bDying || enemy->TeamID == character->TeamID) continue;
 
-        float wd = c->GetDistanceTo(e) / 100.0f;
-        if (wd > knoxy::BTRange) continue;
+        float worldDist = character->GetDistanceTo(enemy) / 100.0f;
+        if (worldDist > knoxy::BTRange) continue;
 
-        // Visibility Check from Muzzle
-        bool v = false; SDK::FVector vbp(0, 0, 0);
-        for (const char *bn : TargetBonesFallback) {
-            SDK::FVector b = e->GetBonePos(bn, {0, 0, 0});
-            if (ct->LineOfSightTo(e, ml, false)) {
-                vbp = b; v = true; break;
+        bool isVisible = false;
+        SDK::FVector foundPos;
+
+        for (const char* bone : TargetBones) {
+            SDK::FVector currentBone = enemy->GetBonePos(bone, {0, 0, 0});
+            if (controller->LineOfSightTo(enemy, currentBone, true)) {
+                foundPos = currentBone;
+                isVisible = true;
+                break;
             }
         }
-        if (!v) continue;
 
-        bool isP = ((uint8_t)e->ParachuteState == 1 || (uint8_t)e->ParachuteState == 2);
-        SDK::FVector2D sp;
-        if (ct->ProjectWorldLocationToScreen(vbp, true, &sp)) {
-            float sd = SDK::FVector2D::Distance(sc, sp);
-            if (sd < ms) { ms = sd; bf = e; bp = vbp; }
+        if (!isVisible) continue;
+
+        SDK::FVector2D screenPos;
+        if (controller->ProjectWorldLocationToScreen(foundPos, true, &screenPos)) {
+            float screenDist = SDK::FVector2D::Distance(crosshair, screenPos);
+            if (screenDist < minCrosshairDist) {
+                minCrosshairDist = screenDist;
+                bestTarget = enemy;
+                outTargetPos = foundPos;
+            }
         }
-        float tw = isP ? (wd * 0.25f) : (wd * 0.85f);
-        if (tw < mw) { mw = tw; bt = e; tp = vbp; }
     }
-    if (bf) { otp = bp; return bf; }
-    if (knoxy::Hyper360 && bt) { otp = tp; return bt; }
-    return nullptr;
+    return bestTarget;
 }
 
-namespace Hacks
-{
-    inline void ApplyNuclearTrueDamage(SDK::ASTExtraBaseCharacter *c)
-    {
-        if (!c) return;
-        auto ct = (SDK::ASTExtraPlayerController*)g_PlayerController;
-        *(bool*)((uintptr_t)c + 0x01D4) = false; *(bool*)((uintptr_t)c + 0x50A0) = false;
-        if (c->LagCompensationComponent) {
-            auto lc = c->LagCompensationComponent;
-            lc->ShootCornerMaxDotValue = -1.0f; lc->GrayWeaponAndShootAngle = 180.0f;
-            lc->bVerifyGunPos = false; lc->bVerifyClientMuzzle = false; lc->bVerifyShootRange = false;
-            lc->bVerifyShootDir = false; lc->bVerifyMuzzleImpactDir = false; lc->bVerifyMuzzleImpactDirIgnoreCrawl = false;
-            lc->bVerifyShootPosInHistory = false; lc->bVerifyMuzzleLocus = false; lc->bVerifyShootPoint = false;
-            lc->bVerifyBulletImpactOffset = false; lc->bVerifyClientHitAndBullet = false; lc->bVerifyCharacterImpactOffset = false;
-            lc->bVerifyInParachuteShootPoint = false; lc->bVerifyShooterHead2PosIsBlock = false; lc->bVerifyClientHitCheck = false;
-            lc->bVerifyShootPointPassWall = false;
-            float inf = 999999.0f;
-            lc->TolerateMuzzleAndCharacterDisSquare = 999999; lc->TolerateShootPointDistanceSqured = inf;
-            lc->TolerateMuzzleDistanceSqured = inf; lc->TolerateBulletImpactOffsetDistSqured = inf;
-            lc->TolerateOwnerAndBulletDist = inf; lc->TolerateOwnerAndBulletDist = inf;
-            lc->TolerateBulletDirCheckDistance = inf; lc->TolerateBulletDirOffsetSquared = inf; lc->TolerateShootRange = inf;
-            lc->TolerateHitDataDelayTime = inf; lc->TolerateHitDataDelayTimeShootCorner = inf;
-            lc->TolerateFlyDis = inf; lc->VictimShootVerify.ClientMuzzleHeightMax = inf;
-            lc->VictimShootVerify.ClientPureMuzzleHeightMax = inf;
-        }
-        if (c->WeaponManagerComponent) {
-            auto w = (SDK::ASTExtraShootWeapon *)c->WeaponManagerComponent->CurrentWeaponReplicated;
-            if (w) {
-                *(bool*)((uintptr_t)w + 0x1638) = false;
-                if (w->ShootWeaponComponent) {
-                    auto nc = (SDK::UNormalProjectileComponent *)w->ShootWeaponComponent;
-                    nc->VerifyConfig.MaxShootPointTolerateDistanceOffset = 999999.0f;
-                    nc->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 999999.0f;
-                    nc->VerifyConfig.bVerifyBlockVerify = false; nc->VerifyConfig.bVerifyBulletScDiff = false;
-                    nc->VerifyConfig.bVerifyShootDir2D = false; nc->VerifyConfig.bVerifyImpactPointDiff = false;
-                    nc->VerifyConfig.bVerifyWeaponFireInfoTimeForcePunish = false; nc->VerifyConfig.bVerifyClientFlySpeed = false;
-                    nc->VerifyConfig.bVerifyLauchTimeWithServer = false; nc->VerifyConfig.bVerifyMuzzleBlockTail = false;
-                    nc->VerifyConfig.bVerifyBulletPosReverseDirBlock = false;
-                }
-                if (w->AntiCheatComp) { uintptr_t ac = (uintptr_t)w->AntiCheatComp; *(bool*)(ac + 0x8AC) = false; }
-                if (w->CachedBulletHitInfoUploadComponent) { uintptr_t u = (uintptr_t)w->CachedBulletHitInfoUploadComponent; *(bool*)(u + 0x23F0) = false; }
+namespace Hacks {
+    inline void ApplyNuclearTrueDamage(SDK::ASTExtraBaseCharacter* character) {
+        if (!character || SDK::isObjectInvalid(character) || !character->LagCompensationComponent) return;
+        auto lagComp = character->LagCompensationComponent;
+
+        lagComp->bVerifyClientMuzzle = false;
+        lagComp->bVerifyShootRange = false;
+        lagComp->bVerifyShootDir = false;
+        lagComp->bVerifyMuzzleImpactDir = false;
+        lagComp->bVerifyMuzzleLocus = false;
+        lagComp->bVerifyShootPoint = false;
+        lagComp->bVerifyBulletImpactOffset = false;
+        lagComp->bVerifyClientHitAndBullet = false;
+        lagComp->bVerifyCharacterImpactOffset = false;
+        lagComp->bVerifyClientHitCheck = false;
+
+        lagComp->ShootCornerMaxDotValue = -1.0f;
+        lagComp->GrayWeaponAndShootAngle = 180.0f;
+
+        lagComp->TolerateMuzzleAndCharacterDisSquare = 999999.0f;
+        lagComp->TolerateShootPointDistanceSqured = 999999.0f;
+        lagComp->TolerateMuzzleDistanceSqured = 999999.0f;
+        lagComp->TolerateBulletImpactOffsetDistSqured = 999999.0f;
+        lagComp->TolerateOwnerAndBulletDist = 999999.0f;
+        lagComp->TolerateBulletDirCheckDistance = 999999.0f;
+        lagComp->TolerateBulletDirOffsetSquared = 999999.0f;
+        lagComp->TolerateShootRange = 999999.0f;
+
+        lagComp->VictimShootVerify.ClientMuzzleHeightMax = 99999.0f;
+        lagComp->VictimShootVerify.ClientPureMuzzleHeightMax = 99999.0f;
+
+        if (character->WeaponManagerComponent) {
+            auto weapon = (SDK::ASTExtraShootWeapon*)character->WeaponManagerComponent->CurrentWeaponReplicated;
+            if (weapon && !SDK::isObjectInvalid(weapon) && weapon->ShootWeaponComponent) {
+                auto normComp = (SDK::UNormalProjectileComponent*)weapon->ShootWeaponComponent;
+                normComp->VerifyConfig.bVerifyBlockVerify = false;
+                normComp->VerifyConfig.bVerifyShootDir2D = false;
+                normComp->VerifyConfig.bVerifyClientFlySpeed = false;
+                normComp->VerifyConfig.MaxShootPointTolerateDistanceOffset = 99999.0f;
+                normComp->VerifyConfig.MaxImpactPointTolerateDistanceOffset = 99999.0f;
             }
-        }
-        if (ct && ct->AntiCheatManagerComp) {
-            auto ac = ct->AntiCheatManagerComp;
-            ac->BulletDirError.PunishThresHold = 999999; ac->BulletDirError.bShouldPunish = false;
-            ac->VsShootAngleInVaild.PunishThresHold = 999999; ac->VsShootAngleInVaild.bShouldPunish = false;
-            ac->ShooterHead2PosBlock.PunishThresHold = 999999; ac->ShooterHead2PosBlock.bShouldPunish = false;
-            ac->VsMuzzleAndTailPassWall.bShouldPunish = false; ac->VsMuzzleAndImpactPassWall.bShouldPunish = false;
-            ac->ClientTimeSpeedAcc.bShouldPunish = false; ac->bOpenDetailDataCollect = false;
-            *(bool*)((uintptr_t)ac + 0x23F0) = false;
         }
     }
 }
 
-inline void (*ShootBulletInner_Orig)(uintptr_t W, SDK::FVector SL, SDK::FRotator SR, int SID);
+inline void (*ShootBulletInner_Orig)(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRotator StartRot, int ShootID);
 
-inline void xShootBulletInner(uintptr_t W, SDK::FVector SL, SDK::FRotator SR, int SID)
-{
-    auto lc = (SDK::ASTExtraBaseCharacter *)g_LocalPlayer;
-    if (!lc) return ShootBulletInner_Orig(W, SL, SR, SID);
-    if (knoxy::TrueDamageFix) Hacks::ApplyNuclearTrueDamage(lc);
+inline void xShootBulletInner(uintptr_t Weapon, SDK::FVector StartLoc, SDK::FRotator StartRot, int ShootID) {
+    auto localCharacter = (SDK::ASTExtraBaseCharacter*)g_LocalPlayer;
+    if (!localCharacter || SDK::isObjectInvalid(localCharacter)) return ShootBulletInner_Orig(Weapon, StartLoc, StartRot, ShootID);
+
+    if (knoxy::TrueDamageFix) Hacks::ApplyNuclearTrueDamage(localCharacter);
+
     if (knoxy::BulletTrack) {
-        SDK::FVector tp(0, 0, 0);
-        SDK::ASTExtraPlayerCharacter *t = GetKnoxyHyperTarget(tp);
-        if (t) {
-            SDK::FVector dir = tp - SL;
-            float d3 = std::sqrt(dir.X * dir.X + dir.Y * dir.Y + dir.Z * dir.Z);
-            if (d3 > 0.1f) {
-                SDK::FRotator hr;
-                float pr = std::clamp(dir.Z / d3, -1.0f, 1.0f);
-                hr.Pitch = std::asin(pr) * (180.0f / 3.14159265358979323846f);
-                hr.Yaw = std::atan2(dir.Y, dir.X) * (180.0f / 3.14159265358979323846f);
-                hr.Roll = 0;
-                hr.Pitch = std::clamp(hr.Pitch, -89.9f, 89.9f);
-                while (hr.Yaw > 180.0f) hr.Yaw -= 360.0f;
-                while (hr.Yaw < -180.0f) hr.Yaw += 360.0f;
-                return ShootBulletInner_Orig(W, SL, hr, SID);
+        SDK::FVector targetedPos;
+        auto target = GetKnoxyHyperTarget(targetedPos);
+        if (target) {
+            float bulletSpeed = 80000.0f;
+            auto weapon = (SDK::ASTExtraShootWeapon*)localCharacter->WeaponManagerComponent->CurrentWeaponReplicated;
+            if (weapon && weapon->ShootWeaponComponent && weapon->ShootWeaponComponent->ShootWeaponEntityComponent) {
+                bulletSpeed = weapon->ShootWeaponComponent->ShootWeaponEntityComponent->BulletFireSpeed;
             }
+
+            float dist = localCharacter->GetDistanceTo(target);
+            float time = dist / bulletSpeed;
+            float leadFactor = (target->ParachuteState > 0) ? 0.05f : 0.03f;
+            SDK::FVector predictedPos = targetedPos + (target->GetVelocity() * (time + leadFactor));
+            SDK::FRotator aimRot = SDK::UKismetMathLibrary::FindLookAtRotation(StartLoc, predictedPos);
+
+            return ShootBulletInner_Orig(Weapon, StartLoc, aimRot, ShootID);
         }
     }
-    return ShootBulletInner_Orig(W, SL, SR, SID);
+    return ShootBulletInner_Orig(Weapon, StartLoc, StartRot, ShootID);
 }

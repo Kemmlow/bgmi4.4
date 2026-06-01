@@ -1,96 +1,29 @@
+// Credits : @knoxy_dev
 #pragma once
 
 #include "SDK.hpp"
 
-inline void ApplyCrazyCar(uintptr_t localPlayer, bool crazycar, bool instantbrake, bool carfly)
+inline void ApplyCrazyCar(SDK::ASTExtraBaseCharacter* character, bool carfly, bool instantbrake)
 {
-    if (localPlayer)
+    if (character && !SDK::isObjectInvalid(character) && character->bIsAttachedToVehicle && character->VehicleSeatIdx == 0)
     {
-        auto character = (SDK::ASTExtraBaseCharacter *)localPlayer;
-        if (character && !isObjectInvalid(character))
+        auto vehicle = (SDK::ASTExtraVehicleBase*)character->CurrentVehicle;
+        if (vehicle && !SDK::isObjectInvalid(vehicle))
         {
-            // Only work when we are the Driver (SeatIdx 0)
-            if (character->VehicleSeatIdx == 0 && character->bIsAttachedToVehicle)
+            if (carfly)
             {
-                auto vehicle = character->CurrentVehicle;
-                if (vehicle && !isObjectInvalid(vehicle))
+                SDK::FVector velocity = vehicle->GetVelocity();
+                velocity.Z = 150.0f; // More aggressive lift
+                vehicle->K2_SetActorLocation(vehicle->K2_GetActorLocation() + SDK::FVector(0, 0, 15.0f), false, nullptr, true);
+            }
+
+            if (instantbrake)
+            {
+                auto mesh = vehicle->Mesh;
+                if (mesh && !SDK::isObjectInvalid(mesh))
                 {
-                    auto root = vehicle->RootComponent;
-                    auto prim = (SDK::UPrimitiveComponent*)root;
-
-                    // 1. Crazy Car: Hyper-Speed Logic
-                    if (crazycar)
-                    {
-                        auto movement = (SDK::USTExtraVehicleMovementComponent4W*)vehicle->VehicleMovement;
-                        if (movement && !isObjectInvalid(movement))
-                        {
-                            movement->MaxSpeed = 99999.0f;
-                            movement->InitialMaxSpeed = 99999.0f;
-                            movement->SpecialStateMaxSpeed = 99999.0f;
-                        }
-
-                        auto sync = vehicle->VehicleSyncComponent;
-                        if (sync && !isObjectInvalid(sync))
-                        {
-                            sync->bVehicleNeedFlyVelCheck = false;
-                        }
-
-                        auto protection = (SDK::UWheeledVehicleProtectionComponent*)vehicle->VehicleAntiCheat;
-                        if (protection && !isObjectInvalid(protection))
-                        {
-                            protection->bEnableProtection = false;
-                            protection->bEnablePreventFly = false;
-                        }
-                    }
-
-                    // 2. God-Level Instant Brake
-                    if (instantbrake)
-                    {
-                        SDK::FVector zero(0, 0, 0);
-                        vehicle->K2_SetActorLocation(vehicle->K2_GetActorLocation(), false, nullptr, false);
-
-                        if (prim && !isObjectInvalid(prim))
-                        {
-                            prim->SetPhysicsLinearVelocity(zero, false, SDK::FName("None"));
-                            prim->SetPhysicsAngularVelocity(zero, false, SDK::FName("None"));
-                        }
-
-                        auto movement = vehicle->VehicleMovement;
-                        if (movement && !isObjectInvalid(movement))
-                        {
-                            movement->StopMovementImmediately();
-                        }
-                    }
-
-                    // 3. God-Level CarFly: Ascend 1m/s and Defy Gravity
-                    if (carfly)
-                    {
-                        if (prim && !isObjectInvalid(prim))
-                        {
-                            // Ascend: 100.0f cm/s = 1m/s
-                            // Preserve current XY momentum but force Z ascend
-                            SDK::FVector currentVel = prim->GetPhysicsLinearVelocity(SDK::FName("None"));
-                            SDK::FVector flyVel(currentVel.X, currentVel.Y, 100.0f);
-
-                            // Force Injection
-                            prim->SetPhysicsLinearVelocity(flyVel, false, SDK::FName("None"));
-
-                            // Defy Gravity
-                            prim->SetEnableGravity(false);
-
-                            // Disable standard server-side velocity verification for flying
-                            auto sync = vehicle->VehicleSyncComponent;
-                            if (sync && !isObjectInvalid(sync))
-                            {
-                                sync->bVehicleNeedFlyVelCheck = false;
-                            }
-                        }
-                    }
-                    else if (prim && !isObjectInvalid(prim))
-                    {
-                        // Restore gravity if CarFly is disabled
-                        prim->SetEnableGravity(true);
-                    }
+                    mesh->SetPhysicsLinearVelocity(SDK::FVector(0, 0, 0), false, "None");
+                    mesh->SetPhysicsAngularVelocity(SDK::FVector(0, 0, 0), false, "None");
                 }
             }
         }

@@ -1,47 +1,24 @@
+// Credits : @knoxy_dev
 #pragma once
 
 #include "SDK.hpp"
 
-inline void ApplyVehicleFlash(uintptr_t localPlayer, bool vehicleflash)
+inline void ApplyVehicleFlash(SDK::ASTExtraBaseCharacter* character, bool vehicleflash)
 {
-    if (localPlayer)
+    if (vehicleflash && character && !SDK::isObjectInvalid(character))
     {
-        auto character = (SDK::ASTExtraBaseCharacter *)localPlayer;
-        if (vehicleflash && character && !SDK::isObjectInvalid(character))
+        if (character->VehicleSeatIdx == 0 && character->bIsAttachedToVehicle)
         {
-            if (character->VehicleSeatIdx == 0 && character->bIsAttachedToVehicle)
+            auto vehicle = (SDK::ASTExtraVehicleBase*)character->CurrentVehicle;
+            if (vehicle && !SDK::isObjectInvalid(vehicle))
             {
-                auto vehicle = character->CurrentVehicle;
-                if (vehicle && !SDK::isObjectInvalid(vehicle))
+                vehicle->TorqueMultiplierforBoosting = 100.0f;
+                vehicle->ExtraBoostFactor = 10.0f;
+
+                auto protection = (SDK::UWheeledVehicleProtectionComponent*)vehicle->VehicleAntiCheat;
+                if (protection && !SDK::isObjectInvalid(protection))
                 {
-                    auto movement = (SDK::USTExtraVehicleMovementComponent4W*)vehicle->VehicleMovement;
-                    if (movement && !SDK::isObjectInvalid(movement))
-                    {
-                        float flashSpeed = 11111.0f; // 400 km/h approx in engine units
-                        movement->MaxSpeed = flashSpeed;
-                        movement->InitialMaxSpeed = flashSpeed;
-                        movement->SpecialStateMaxSpeed = flashSpeed;
-
-                        movement->TorqueRate = 999.0f;
-                        movement->TorqueMultiplierforBoosting = 999.0f;
-                        movement->SpeedUpImpulse = 99999.0f;
-
-                        movement->bSpecialAntiCheatSpeed = false;
-                        movement->EnableSpecialAntiCheatSpeed(false, 0.0f);
-                    }
-
-                    auto sync = vehicle->VehicleSyncComponent;
-                    if (sync && !SDK::isObjectInvalid(sync))
-                    {
-                        sync->bVehicleNeedFlyVelCheck = false;
-                    }
-
-                    auto protection = (SDK::UWheeledVehicleProtectionComponent*)vehicle->VehicleAntiCheat;
-                    if (protection && !SDK::isObjectInvalid(protection))
-                    {
-                        protection->bEnableProtection = false;
-                        protection->bEnablePreventFly = false;
-                    }
+                    protection->bEnablePreventFly = false;
                 }
             }
         }

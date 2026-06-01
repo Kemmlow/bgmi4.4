@@ -2,59 +2,20 @@
 #pragma once
 
 #include "SDK.hpp"
-#include <map>
 
-namespace knoxy
+inline void ApplySkinHack(SDK::ASTExtraBaseCharacter* character)
 {
-    inline std::map<int, int> GunSkinMap = {
-        {101001,1101001089}, {291001,1010010891}, {101004,1101004046}, {291004,1010040461},
-        {203008,1010040462}, {205005,1010040463}, {102001,1102001120}, {292001,1020011201},
-        {103003,1103003042}, {293003,1030030421}, {101102,1101102017}, {103012,1103102007},
-        {101006,1101006044}, {291006,1010060441}, {104004,1104004035}, {105002,1105002035},
-        {295002,1050020351}, {103102,1103102007}, {101100,1101100012}, {101010,1101010019},
-        {104101,1104101001}, {101002,1101002081}, {291002,1010020811}, {205007,1010020813},
-        {103002,1103002030}, {293002,1030020301}, {101008,1101008081}, {291008,1010080811},
-        {105010,1105010008}, {102007,1102007019}, {104102,1104102004}, {106004,1106004001},
-        {106002,1106002023}, {102105,1102105012}, {106001,1106001002}, {103010,1103010006},
-        {101007,1101007054}, {291007,1010070541}, {106003,1106003011}, {106005,1106005001},
-        {104003,1104003026}, {104002,1104002022}, {104001,1104001035}, {101003,1101003143},
-        {103004,1103004037}, {293004,1030040371}, {103009,1103009051}, {293009,1030090511},
-        {102002,1102002136}, {103005,1103005024}, {293005,1030050241}, {203011,1030050242}
-    };
+    if (!character || SDK::isObjectInvalid(character)) return;
 
-    inline void ApplyGunSkinHack(uintptr_t localPlayer)
+    auto weaponManager = character->WeaponManagerComponent;
+    if (!weaponManager || SDK::isObjectInvalid(weaponManager)) return;
+
+    auto currentWeapon = (SDK::ASTExtraShootWeapon*)weaponManager->CurrentWeaponReplicated;
+    if (!currentWeapon || SDK::isObjectInvalid(currentWeapon)) return;
+
+    auto avatarComp = currentWeapon->WeaponAvatarComponent;
+    if (avatarComp && !SDK::isObjectInvalid(avatarComp))
     {
-        if (!localPlayer) return;
-        auto character = (SDK::ASTExtraBaseCharacter*)localPlayer;
-
-        if (character->WeaponManagerComponent)
-        {
-            auto weapon = (SDK::ASTExtraShootWeapon*)character->WeaponManagerComponent->CurrentWeaponReplicated;
-            if (weapon && !SDK::isObjectInvalid(weapon))
-            {
-                auto avatar = weapon->WeaponAvatarComponent;
-                if (avatar && !SDK::isObjectInvalid(avatar))
-                {
-                    // Correct retrieval for current gun identity
-                    int currentID = weapon->WeaponId; // Offset 0x01E0
-                    if (currentID == 0) currentID = avatar->WeaponSkinID;
-
-                    auto it = GunSkinMap.find(currentID);
-                    if (it != GunSkinMap.end())
-                    {
-                        avatar->WeaponSkinID = it->second;
-                    }
-                }
-            }
-        }
-    }
-
-    inline void ProcessGunSkinReporting(SDK::FBulletHitInfoUploadData& hitData)
-    {
-        auto it = GunSkinMap.find(hitData.WeaponItemId);
-        if (it != GunSkinMap.end())
-        {
-            hitData.WeaponItemId = it->second;
-        }
+        avatarComp->WeaponSkinID = 101001;
     }
 }
