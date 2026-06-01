@@ -27,7 +27,7 @@ namespace knoxy
 
     /**
      * @brief God-Level Gun Skin Swapper.
-     * Force-patches the weapon skin ID for the current shoot weapon.
+     * Force-patches the weapon skin ID via raw memory offset to bypass SDK discrepancies.
      */
     inline void ApplyGunSkinHack(uintptr_t localPlayer)
     {
@@ -40,12 +40,15 @@ namespace knoxy
             auto currentWeapon = (SDK::ASTExtraShootWeapon*)weaponMgr->CurrentWeaponReplicated;
             if (currentWeapon && !isObjectInvalid(currentWeapon))
             {
-                int originalID = currentWeapon->WeaponSkinID; // Offset 0x07E0
+                // Access WeaponSkinID via Raw Offset 0x07E0
+                int* pSkinID = (int*)((uintptr_t)currentWeapon + 0x07E0);
+                int originalID = *pSkinID;
+
                 auto it = GunSkinMap.find(originalID);
                 if (it != GunSkinMap.end())
                 {
-                    // Force the skin swap
-                    currentWeapon->WeaponSkinID = it->second;
+                    // Force the skin swap in memory
+                    *pSkinID = it->second;
                 }
             }
         }
