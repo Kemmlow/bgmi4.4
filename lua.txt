@@ -1,0 +1,7 @@
+uintptr_t AvatarComponent = 0x2E50; // Character -> AvatarComponent2
+uintptr_t AvatarSyncData = 0x03E8;  // AvatarComponent2 -> NetAvatarData
+auto *TombBox = (APlayerTombBox *)Actor;
+auto DeadBoxAvatarCompPtr = (uintptr_t *)((uintptr_t)TombBox + 0x06C0); // PickupListWrapper (Close to Avatar info in TombBox)
+auto *TombBox = (APlayerTombBox *)Actor;
+auto *NetAvatarComp = (FNetAvatarSyncData *)((uintptr_t)AvatarComp + 0x03E8);
+auto *NetAvatarComp = (FNetAvatarSyncData *)((uintptr_t)g_LocalPlayer->AvatarComponent2 + 0x03E8);
