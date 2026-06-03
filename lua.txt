@@ -1,7 +1,342 @@
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif
 uintptr_t AvatarComponent = 0x2E50; // Character -> AvatarComponent2
 uintptr_t AvatarSyncData = 0x03E8;  // AvatarComponent2 -> NetAvatarData
-auto *TombBox = (APlayerTombBox *)Actor;
-auto DeadBoxAvatarCompPtr = (uintptr_t *)((uintptr_t)TombBox + 0x06C0); // PickupListWrapper (Close to Avatar info in TombBox)
-auto *TombBox = (APlayerTombBox *)Actor;
-auto *NetAvatarComp = (FNetAvatarSyncData *)((uintptr_t)AvatarComp + 0x03E8);
-auto *NetAvatarComp = (FNetAvatarSyncData *)((uintptr_t)g_LocalPlayer->AvatarComponent2 + 0x03E8);
+
+int SkinCarDefault = 0;
+int SkinCarMod = 0;
+bool SkinCarNew = false;
+
+static std::unordered_set<uintptr_t> ChangedDeadBoxes;
+//--------------------------------------------------------------
+uintptr_t GetVirtualFunctionAddress(uintptr_t clazz, uintptr_t index)
+{
+    if (!clazz)
+        return 0;
+    uintptr_t vtablePtr = *(uintptr_t *)clazz;
+    if (!vtablePtr)
+        return 0;
+    return *((uintptr_t *)vtablePtr + index);
+}
+//--------------------------------------------------------------
+void ChangeItemAVc(uintptr_t thiz, int InItemID)
+{
+    if (!thiz)
+        return;
+    auto fn = GetVirtualFunctionAddress(thiz, 185);
+    if (!fn)
+        return;
+    ((void (*)(uintptr_t, int, bool))fn)(thiz, InItemID, true);
+}
+//--------------------------------------------------------------
+void LobbySkins(UCanvas *Canvas)
+{
+    auto GWorld = GetFullWorld();
+    if (!GWorld || !GWorld->PersistentLevel)
+        return;
+    auto Actors = fetActors(GWorld->PersistentLevel);
+
+    for (int i = 0; i < Actors.Num(); ++i)
+    {
+        auto Actor = Actors[i];
+        if (!Actor)
+            continue;
+    }
+    //--------------------------------------------------------------
+    // 🔹 Dead Box (Tombbox) Skins
+    //--------------------------------------------------------------
+    if (!g_LocalPlayer || !g_PlayerController)
+        return;
+    auto WeaponMgr = g_LocalPlayer->WeaponManagerComponent;
+    if (!WeaponMgr || !WeaponMgr->CurrentWeaponReplicated)
+        return;
+    int WeaponID = WeaponMgr->CurrentWeaponReplicated->GetWeaponID();
+    auto itSkin = ModSkinsID.find(WeaponID);
+    if (itSkin == ModSkinsID.end())
+        return;
+    int desiredSkin = itSkin->second;
+    for (int i = 0; i < Actors.Num(); ++i)
+    {
+        auto Actor = Actors[i];
+        if (!Actor || !Actor->IsA(APlayerTombBox::StaticClass()))
+            continue;
+        auto *TombBox = (APlayerTombBox *)Actor;
+        if (!TombBox || !TombBox->DamageCauser || !TombBox->TargetPlayer)
+            continue;
+        if (TombBox->DamageCauser->PlayerKey != g_PlayerController->PlayerKey)
+            continue;
+        auto DeadBoxAvatarCompPtr = (uintptr_t *)((uintptr_t)TombBox + 0x06C0); // PickupListWrapper
+        if (!DeadBoxAvatarCompPtr)
+            continue;
+        auto DeadBoxAvatarComp = *DeadBoxAvatarCompPtr;
+        if (!DeadBoxAvatarComp)
+            continue;
+        if (ChangedDeadBoxes.find(DeadBoxAvatarComp) == ChangedDeadBoxes.end())
+        {
+            ChangeItemAVc(DeadBoxAvatarComp, desiredSkin);
+            ChangedDeadBoxes.insert(DeadBoxAvatarComp);
+        }
+    }
+}
+
+void MemoryBYPASSHack()
+{
+    if (!g_PlayerController || !g_LocalPlayer)
+        return;
+    //===================================================================================================================//
+
+    //===================================================================================================================//
+
+    //===================================================================================================================//
+    int kill_message_event_idx = 999;
+    auto VTable = (void **)g_PlayerController->VTable;
+    auto f_mprotect = [](uintptr_t addr, size_t len, int32_t prot) -> int32_t
+    {
+       static_assert(PAGE_SIZE == 4096);
+       constexpr size_t page_size = static_cast<size_t>(PAGE_SIZE);
+       void* start = reinterpret_cast<void*>(addr & -page_size);
+       uintptr_t end = (addr + len + page_size - 1) & -page_size;
+       return mprotect(start, end - reinterpret_cast<uintptr_t>(start), prot); };
+    if (VTable && (VTable[kill_message_event_idx] != kill_message_event))
+    {
+        orig_kill_message_event = decltype(orig_kill_message_event)(VTable[kill_message_event_idx]);
+        f_mprotect((uintptr_t)(&VTable[kill_message_event_idx]), sizeof(uintptr_t), PROT_READ | PROT_WRITE);
+        VTable[kill_message_event_idx] = (void *)kill_message_event;
+    }
+    //===================================================================================================================//
+    if (g_LocalPlayer && g_LocalPlayer->AvatarComponent2)
+    {
+        auto AvatarComp = g_LocalPlayer->AvatarComponent2;
+        auto *NetAvatarComp = (FNetAvatarSyncData *)((uintptr_t)AvatarComp + 0x03E8);
+        if (!NetAvatarComp)
+            return;
+        auto &Slotsybc = NetAvatarComp->SlotSyncData;
+        bool updated = false;
+        int selectedSuitIndex = g_PlayerOutfit.currentOutfit.load();
+        if (selectedSuitIndex >= 0 && selectedSuitIndex < IM_ARRAYSIZE(g_Outfits))
+        {
+            int desiredItemId = g_Outfits[selectedSuitIndex].itemId;
+            if (Slotsybc.Num() > 2 && Slotsybc[2].ItemId != desiredItemId)
+            {
+                Slotsybc[2].ItemId = desiredItemId;
+                updated = true;
+            }
+        }
+        if (updated)
+        {
+            g_LocalPlayer->AvatarComponent2->OnRep_BodySlotStateChanged();
+        }
+    }
+    //===================================================================================================================//
+    if (!g_LocalPlayer || !g_LocalPlayer->AvatarComponent2)
+        return;
+    auto *NetAvatarComp = (FNetAvatarSyncData *)((uintptr_t)g_LocalPlayer->AvatarComponent2 + 0x03E8);
+    if (!NetAvatarComp)
+        return;
+    auto &Slots = NetAvatarComp->SlotSyncData;
+    bool updated = false;
+    for (int i = 0; i < Slots.Num(); i++)
+    {
+        int &id = Slots[i].ItemId;
+        auto findNewId = [&](const auto &map) -> bool
+        {
+        auto it = map.find(id);
+    if (it != map.end() && id != it->second) {
+        id = it->second;
+        updated = true;
+        return true;
+    } else {
+        return false;
+    } };
+        if (findNewId(Bagpack) || findNewId(Helmet) || findNewId(Parachute))
+        {
+            continue;
+        }
+    }
+    if (updated)
+    {
+        g_LocalPlayer->AvatarComponent2->OnRep_BodySlotStateChanged();
+    }
+    //===================================================================================================================//
+    if (VehicleSkin && g_LocalPlayer && g_LocalPlayer->CurrentVehicle)
+    {
+        auto *CurrentVehicle = g_LocalPlayer->CurrentVehicle;
+        if ((uintptr_t)CurrentVehicle != lastVehicle)
+        {
+            lastVehicle = (uintptr_t)CurrentVehicle;
+            lastSkinApplied = -1; // Reset skin
+        }
+        if (auto *VehicleAvatar = CurrentVehicle->VehicleAvatar)
+        {
+            int DefaultAvatarID = VehicleAvatar->GetDefaultAvatarID();
+            int CurrentSkinID = CurrentVehicle->GetAvatarID();
+            auto it = VehicleSkinMap.find(DefaultAvatarID);
+            if (it != VehicleSkinMap.end())
+            {
+                int DesiredSkinID = it->second;
+                if (DesiredSkinID != CurrentSkinID && lastSkinApplied != DesiredSkinID)
+                {
+                    lastSkinApplied = DesiredSkinID;
+                    VehicleAvatar->ChangeItemAvatar(DesiredSkinID, true);
+                }
+            }
+        }
+    }
+    //===================================================================================================================//
+    if (GunSkin && g_LocalPlayer)
+    {
+        auto *WeaponManager = g_LocalPlayer->WeaponManagerComponent;
+        if (WeaponManager)
+        {
+            auto propSlot = WeaponManager->GetCurrentUsingPropSlot();
+            if ((int)propSlot.GetValue() < 1 || (int)propSlot.GetValue() > 4)
+                return;
+            auto *Weapon = WeaponManager->CurrentWeaponReplicated;
+            auto &UnrealHacks = Weapon->synData;
+            if (UnrealHacks.Num() > 0)
+            {
+                int weaponID = Weapon->GetWeaponID();
+                std::unordered_map<int, int> *currentWeaponMap = nullptr;
+                switch (weaponID)
+                {
+                case 101004:
+                    currentWeaponMap = &M416SkinsID;
+                    break;
+                case 101001:
+                    currentWeaponMap = &AKMSkinsID;
+                    break;
+                case 101002:
+                    currentWeaponMap = &M16A4SkinsID;
+                    break;
+                case 101003:
+                    currentWeaponMap = &SCARLSkinsID;
+                    break;
+                case 101005:
+                    currentWeaponMap = &GROZASkinsID;
+                    break;
+                case 101006:
+                    currentWeaponMap = &AUGSkinsID;
+                    break;
+                case 101007:
+                    currentWeaponMap = &QBZSkinsID;
+                    break;
+                case 101008:
+                    currentWeaponMap = &M762SkinsID;
+                    break;
+                case 101102:
+                    currentWeaponMap = &ACE32SkinsID;
+                    break;
+                case 103003:
+                    currentWeaponMap = &AWMSkinsID;
+                    break;
+                case 103002:
+                    currentWeaponMap = &M24SkinsID;
+                    break;
+                case 103001:
+                    currentWeaponMap = &KAR98KSkinsID;
+                    break;
+                case 103012:
+                    currentWeaponMap = &AMRSkinsID;
+                    break;
+                case 103007:
+                    currentWeaponMap = &MK14SkinsID;
+                    break;
+                case 103004:
+                    currentWeaponMap = &SKSSkinsID;
+                    break;
+                case 103009:
+                    currentWeaponMap = &SLRSkinsID;
+                    break;
+                case 103006:
+                    currentWeaponMap = &MINI14SkinsID;
+                    break;
+                case 103100:
+                    currentWeaponMap = &MK12SkinsID;
+                    break;
+                case 105002:
+                    currentWeaponMap = &DP28SkinsID;
+                    break;
+                case 105010:
+                    currentWeaponMap = &MG3SkinsID;
+                    break;
+                case 105001:
+                    currentWeaponMap = &M249SkinsID;
+                    break;
+                case 102001:
+                    currentWeaponMap = &UZISkinsID;
+                    break;
+                case 102002:
+                    currentWeaponMap = &UMP45SkinsID;
+                    break;
+                case 102003:
+                    currentWeaponMap = &VECTORSKinsID;
+                    break;
+                case 102004:
+                    currentWeaponMap = &THOMPSONSkinsID;
+                    break;
+                case 102005:
+                    currentWeaponMap = &BIZONSkinsID;
+                    break;
+                case 103005:
+                    currentWeaponMap = &VSSSkinsID;
+                    break;
+                case 102105:
+                    currentWeaponMap = &P90SkinsID;
+                    break;
+                case 104003:
+                    currentWeaponMap = &S12KSkinsID;
+                    break;
+                case 104002:
+                    currentWeaponMap = &S1897SkinsID;
+                    break;
+                case 104004:
+                    currentWeaponMap = &DBSSkinsID;
+                    break;
+                case 101012:
+                    currentWeaponMap = &HoneyBadgerSkinsID;
+                    break;
+                case 101100:
+                    currentWeaponMap = &FAMASSkinsID;
+                    break;
+                case 108004:
+                    currentWeaponMap = &PANSkinsID;
+                    break;
+                case 108001:
+                    currentWeaponMap = &MacheteSkinsID;
+                    break;
+                case 108005:
+                    currentWeaponMap = &DaggerSkinsID;
+                    break;
+                default:
+                    break;
+                }
+                if (currentWeaponMap)
+                {
+                    bool skinChanged = false;
+                    for (int i = 0; i < UnrealHacks.Num(); i++)
+                    {
+                        auto &entry = UnrealHacks[i];
+                        auto it = currentWeaponMap->find(entry.DefineID.TypeSpecificID);
+                        if (it != currentWeaponMap->end() && entry.DefineID.TypeSpecificID != it->second)
+                        {
+                            entry.DefineID.TypeSpecificID = it->second;
+                            skinChanged = true;
+                        }
+                    }
+                    if (skinChanged)
+                    {
+                        Weapon->OnRep_AvatarMeshChanged();
+                    }
+                }
+            }
+        }
+    }
+    //===================================================================================================================//
+
+    //===================================================================================================================//
+
+    //===================================================================================================================//
+
+    //===================================================================================================================//
+}
