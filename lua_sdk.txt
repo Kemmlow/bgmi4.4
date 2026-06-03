@@ -1,7 +1,7 @@
-UObject *GetObjectByClass(UClass *Class, bool Default)
+SDK::UObject *GetObjectByClass(SDK::UClass *Class, bool Default)
 {
     if (!Class) return nullptr;
-    auto objects = UObject::GetGlobalObjects();
+    auto objects = SDK::UObject::GetGlobalObjects();
     int count = objects.Num();
     if (count <= 0 || count > 1000000) return nullptr;
 
@@ -9,8 +9,9 @@ UObject *GetObjectByClass(UClass *Class, bool Default)
     {
         auto object = objects.GetByIndex(i);
         if (!object || (uintptr_t)object < 0x1000 || (uintptr_t)object > 0x7FFFFFFFFFFF) continue;
-        if (!object->Class || !object->IsA(Class)) continue;
-        if (Default ? object->HasAnyFlags(0x10) : !object->HasAnyFlags(0x10)) return object;
+        if (!object->ClassPrivate || !object->IsA(Class)) continue;
+        bool isDefault = (object->ObjectFlags & 0x10);
+        if (Default == isDefault) return object;
     }
     return nullptr;
 }
@@ -19,22 +20,22 @@ void MainThread2()
 {
     sleep(10);
 
-    UClass* TargetClass = nullptr;
+    SDK::UClass* TargetClass = nullptr;
     while (!TargetClass) {
-        TargetClass = UGameLuaEnv::StaticClass();
+        TargetClass = SDK::UGameLuaEnv::StaticClass();
         if (!TargetClass) sleep(1);
     }
 
-    UGameLuaEnv *LuaEnv = (UGameLuaEnv *)GetObjectByClass(TargetClass, false);
+    SDK::UGameLuaEnv *LuaEnv = (SDK::UGameLuaEnv *)GetObjectByClass(TargetClass, false);
     while (!LuaEnv)
     {
         sleep(1);
-        LuaEnv = (UGameLuaEnv *)GetObjectByClass(TargetClass, false);
+        LuaEnv = (SDK::UGameLuaEnv *)GetObjectByClass(TargetClass, false);
     }
 
     if (LuaEnv)
     {
-        FString luaScript = R"(
+        SDK::FString luaScript = R"(
     local path = "/sdcard/Android/obb/com.tencent.ig/lua_output.txt"
     local file = io.open(path, "w")
     if file then
@@ -43,7 +44,7 @@ void MainThread2()
     end
     )";
 
-        FString TwitterLoginBypassScript = R"lua(
+        SDK::FString TwitterLoginBypassScript = R"lua(
     pcall(function()
         local logic_imsdk_deeplink_login = require("client.logic.login.logic_imsdk_deeplink_login")
         if not logic_imsdk_deeplink_login then return end
